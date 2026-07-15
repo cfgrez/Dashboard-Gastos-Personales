@@ -8,18 +8,40 @@ App web para gestionar gastos. Sube tus cartolas bancarias en PDF y extrae las t
 - Banco Santander (cuenta corriente + Worldmember)
 - Banco Security (cuenta corriente + Tarjeta One)
 
-## Cómo funciona la carga de PDFs
+## Funciones principales
 
+### 📤 Subir cartola PDF
 1. Click "📤 Subir cartola PDF" → selecciona el PDF
-2. La app detecta el banco y extrae fechas, descripciones y montos
-3. **Pantalla de revisión**: ves las transacciones detectadas antes de agregar
-4. Desmarca las que no correspondan (ej: abonos en cuentas corrientes) → "✅ Agregar seleccionadas"
+2. La app detecta banco, fechas, descripciones y montos
+3. **Pantalla de revisión**: verás cada movimiento marcado como 💸 Gasto o 💰 Ingreso antes de agregar
+4. Desmarca lo que no corresponda → "✅ Agregar seleccionadas"
 5. Los duplicados se omiten automáticamente
 
-Notas del parser:
-- Compras en cuotas: usa el valor de la **cuota mensual** (lo que pagas ese mes)
-- Pagos de tarjeta, abonos y traspasos recibidos se excluyen automáticamente
-- Tarjeta internacional: montos en USD (marcados con "(USD)")
+### ✏️ Editar y reclasificar
+Cada fila de la tabla tiene botones ✏️ (editar) y ✕ (eliminar). Al editar puedes:
+- Cambiar categoría y subcategoría
+- Cambiar tipo (Gasto / Ingreso)
+- Cambiar moneda (CLP / USD)
+- Corregir fecha, descripción, monto o banco
+
+### 💰 Ingresos, abonos y reversas
+Ya no se descartan los movimientos de entrada de dinero. Se capturan y muestran por separado:
+- Depósitos y transferencias recibidas en cuentas corrientes
+- Reversas/abonos en tarjetas de crédito (compras devueltas, notas de crédito)
+- Filtro "Tipo" para ver solo gastos, solo ingresos, o ambos
+- Los gráficos de categoría/banco solo consideran **gastos**, para no mezclar con el dinero que entra
+
+### 💵 Montos en USD
+La tarjeta internacional se detecta y sus montos se guardan en USD, separados de los CLP:
+- Estadística "Gastos (USD)" independiente de "Gastos (CLP)"
+- Los gráficos por categoría/banco muestran solo CLP (para no sumar monedas distintas)
+- En la tabla, los montos en USD se marcan con "US$" y etiqueta "USD"
+
+## Notas del parser
+
+- Compras en cuotas: usa el valor de la **cuota mensual** (lo que pagas ese mes), no el total de la compra
+- Los pagos automáticos de la tarjeta y "monto cancelado" se excluyen (no son gasto, son el pago del total)
+- Puedes forzar el año del período si el PDF usa fechas sin año (ej. cuentas corrientes con "DD/MM")
 
 ## Deploy en Cloudflare
 
