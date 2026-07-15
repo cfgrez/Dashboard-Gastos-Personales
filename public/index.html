@@ -7,14 +7,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
+        body {
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: #e2e8f0; 
+            color: #e2e8f0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container { max-width: 1500px; margin: 0 auto; }
         .header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 30px; flex-wrap: wrap; gap: 16px;
@@ -31,12 +31,14 @@
         .btn-success:hover { background: #059669; }
         .btn-secondary { background: #475569; color: white; }
         .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-icon { padding: 5px 9px; font-size: 12px; }
         .card {
             background: rgba(30, 41, 59, 0.8); border: 1px solid #334155;
             border-radius: 12px; padding: 20px; margin-bottom: 16px;
         }
-        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
         .filter-group label {
             display: block; font-size: 12px; color: #94a3b8;
             margin-bottom: 6px; font-weight: 600;
@@ -47,9 +49,10 @@
             font-size: 14px; font-family: inherit;
         }
         select:focus, input:focus { outline: none; border-color: #3b82f6; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        select:disabled { opacity: 0.5; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 30px; }
         .stat { text-align: center; }
-        .stat-value { font-size: 28px; font-weight: bold; color: #60a5fa; }
+        .stat-value { font-size: 26px; font-weight: bold; color: #60a5fa; }
         .stat-label { font-size: 12px; color: #94a3b8; margin-top: 8px; }
         .modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -67,6 +70,7 @@
             display: block; font-size: 12px; color: #94a3b8;
             margin-bottom: 6px; margin-top: 12px; font-weight: 600;
         }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         textarea { min-height: 150px; resize: vertical; }
         .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         .file-input-wrapper { position: relative; overflow: hidden; display: block; width: 100%; }
@@ -83,9 +87,10 @@
             text-align: left; padding: 12px; border-bottom: 2px solid #334155;
             color: #94a3b8; font-weight: 600; background: rgba(15, 23, 42, 0.8);
         }
-        table td { padding: 12px; border-bottom: 1px solid #1e293b; }
+        table td { padding: 10px 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
         table tr:hover { background: rgba(59, 130, 246, 0.1); }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .subcat { display: block; font-size: 10.5px; color: #94a3b8; margin-top: 3px; }
         .chart-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .chart-left h3, .chart-right h3 { margin: 0 0 12px; font-size: 14px; color: #94a3b8; }
         .category-bar { margin-bottom: 16px; }
@@ -107,9 +112,13 @@
         .progress-fill { height: 100%; background: #10b981; width: 0%; transition: width 0.3s ease; }
         .preview-table { max-height: 400px; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; margin-top: 12px; }
         .preview-table table td, .preview-table table th { padding: 8px; font-size: 12px; }
+        .monto-ingreso { color: #34d399; }
+        .monto-gasto { color: #e2e8f0; }
+        .actions-cell { display: flex; gap: 6px; justify-content: center; }
         @media (max-width: 768px) {
             .header { flex-direction: column; align-items: flex-start; }
             .chart-container { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
             table { font-size: 11px; }
         }
     </style>
@@ -119,7 +128,7 @@
         <div class="header">
             <h1>💰 Dashboard Gastos</h1>
             <div class="btn-group">
-                <button class="btn btn-primary" onclick="openNewGasto()">+ Nuevo gasto</button>
+                <button class="btn btn-primary" onclick="openNewGasto()">+ Nuevo movimiento</button>
                 <button class="btn btn-success" onclick="openUploadPDF()">📤 Subir cartola PDF</button>
                 <button class="btn btn-secondary" onclick="openImport()">📥 Importar texto</button>
             </div>
@@ -138,27 +147,45 @@
                     <option value="todos">Todos los bancos</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label>Tipo</label>
+                <select id="filterTipo" onchange="actualizarDatos()">
+                    <option value="todos">Gastos + Ingresos</option>
+                    <option value="gasto">Solo gastos</option>
+                    <option value="ingreso">Solo ingresos/abonos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Categoría</label>
+                <select id="filterCategoria" onchange="actualizarDatos()">
+                    <option value="todos">Todas las categorías</option>
+                </select>
+            </div>
         </div>
 
         <div class="stats">
             <div class="card stat">
-                <div class="stat-value" id="totalGastos">$0</div>
-                <div class="stat-label">Total gastos</div>
+                <div class="stat-value" id="totalGastosCLP" style="color:#f87171;">$0</div>
+                <div class="stat-label">Gastos (CLP)</div>
             </div>
             <div class="card stat">
-                <div class="stat-value" id="totalTransacciones" style="color: #10b981;">0</div>
+                <div class="stat-value" id="totalIngresosCLP" style="color:#34d399;">$0</div>
+                <div class="stat-label">Ingresos / Abonos (CLP)</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="totalGastosUSD" style="color:#60a5fa;">US$0</div>
+                <div class="stat-label">Gastos (USD)</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="totalTransacciones" style="color: #e2e8f0;">0</div>
                 <div class="stat-label">Transacciones</div>
-            </div>
-            <div class="card stat">
-                <div class="stat-value" id="promedio" style="color: #f97316;">$0</div>
-                <div class="stat-label">Promedio</div>
             </div>
         </div>
 
         <div id="alertContainer"></div>
 
         <div class="card">
-            <h2 style="margin: 0 0 20px;">📊 Gastos por categoría</h2>
+            <h2 style="margin: 0 0 20px;">📊 Gastos por categoría (CLP)</h2>
             <div class="chart-container">
                 <div class="chart-left" id="chartLeft"></div>
                 <div class="chart-right" id="chartRight"></div>
@@ -166,14 +193,14 @@
         </div>
 
         <div class="card">
-            <h2 style="margin: 0 0 20px;">📋 Detalle de gastos</h2>
+            <h2 style="margin: 0 0 20px;">📋 Detalle de movimientos</h2>
             <div class="table-container">
                 <table id="tablaGastos">
                     <thead>
                         <tr>
                             <th>Fecha</th><th>Descripción</th><th>Categoría</th>
-                            <th>Banco</th><th style="text-align: right;">Monto</th>
-                            <th style="text-align: center;">Acción</th>
+                            <th>Banco</th><th>Tipo</th><th style="text-align: right;">Monto</th>
+                            <th style="text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaGastosBody"></tbody>
@@ -182,17 +209,41 @@
         </div>
     </div>
 
-    <!-- Modal Nuevo Gasto -->
+    <!-- Modal Nuevo / Editar movimiento -->
     <div class="modal" id="modalNuevoGasto">
         <div class="modal-content">
-            <h2>Nuevo gasto</h2>
+            <h2 id="tituloModalGasto">Nuevo movimiento</h2>
             <form onsubmit="guardarGasto(event)">
-                <label>Fecha</label>
-                <input type="date" id="inputFecha" required>
+                <div class="form-row">
+                    <div>
+                        <label>Fecha</label>
+                        <input type="date" id="inputFecha" required>
+                    </div>
+                    <div>
+                        <label>Monto</label>
+                        <input type="number" id="inputMonto" placeholder="0" step="0.01" required>
+                    </div>
+                </div>
                 <label>Descripción</label>
                 <input type="text" id="inputDescripcion" placeholder="ej: Jumbo, Netflix..." required>
-                <label>Monto ($)</label>
-                <input type="number" id="inputMonto" placeholder="0" step="0.01" required>
+
+                <div class="form-row">
+                    <div>
+                        <label>Tipo</label>
+                        <select id="inputTipo">
+                            <option value="gasto">💸 Gasto</option>
+                            <option value="ingreso">💰 Ingreso / Abono</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Moneda</label>
+                        <select id="inputMoneda">
+                            <option value="CLP">CLP ($)</option>
+                            <option value="USD">USD (US$)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <label>Banco/Tarjeta</label>
                 <select id="inputBanco" required>
                     <option>Banco de Chile</option>
@@ -205,8 +256,22 @@
                     <option>Tarjeta Security One</option>
                     <option>Otros</option>
                 </select>
+
+                <div class="form-row">
+                    <div>
+                        <label>Categoría</label>
+                        <select id="inputCategoria" onchange="onCategoriaChange('inputCategoria','inputSubcategoria')">
+                            <option value="">🔍 Automática (según descripción)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Subcategoría</label>
+                        <select id="inputSubcategoria"></select>
+                    </div>
+                </div>
+
                 <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="submit" class="btn btn-primary" id="btnGuardarGasto">Guardar</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modalNuevoGasto')">Cancelar</button>
                 </div>
             </form>
@@ -217,11 +282,11 @@
     <div class="modal" id="modalUploadPDF">
         <div class="modal-content">
             <h2>📤 Subir cartola bancaria (PDF)</h2>
-            
+
             <div id="uploadStep1">
                 <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
                     Soporta: Banco de Chile, Santander, Security (cuentas y tarjetas).
-                    Después de procesar podrás revisar y confirmar antes de agregar.
+                    Se detectan gastos, ingresos/abonos y reversas. Después de procesar podrás revisar antes de agregar.
                 </p>
                 <label>Selecciona archivo PDF</label>
                 <div class="file-input-wrapper">
@@ -258,7 +323,7 @@
             <div id="uploadStep2" style="display: none;">
                 <p style="font-size: 13px; color: #86efac; margin-bottom: 8px;" id="previewResumen"></p>
                 <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-                    Revisa las transacciones detectadas. Desmarca las que no quieras agregar.
+                    Revisa lo detectado. Verde = ingreso/abono, blanco = gasto. Desmarca lo que no quieras agregar.
                 </p>
                 <label>Banco para estas transacciones:</label>
                 <select id="previewBanco">
@@ -277,7 +342,7 @@
                         <thead>
                             <tr>
                                 <th><input type="checkbox" id="checkAll" checked onchange="toggleAllPreview()"></th>
-                                <th>Fecha</th><th>Descripción</th><th style="text-align:right;">Monto</th>
+                                <th>Fecha</th><th>Descripción</th><th>Tipo</th><th style="text-align:right;">Monto</th>
                             </tr>
                         </thead>
                         <tbody id="previewBody"></tbody>
@@ -297,7 +362,8 @@
             <h2>📥 Importar gastos (formato texto)</h2>
             <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
                 <strong>Formato:</strong> fecha | descripción | monto | banco<br>
-                <strong>Ej:</strong> 2026-01-15 | Jumbo | 45000 | Banco Santander
+                <strong>Ej:</strong> 2026-01-15 | Jumbo | 45000 | Banco Santander<br>
+                (se importan siempre como Gasto en CLP; edítalos después si es necesario)
             </p>
             <label>Pega tus datos aquí:</label>
             <textarea id="textImport"></textarea>
@@ -312,43 +378,50 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const categorias = {
-            'Vivienda': { color: '#f97316', palabras: ['arriendo', 'enel', 'aguas ', 'aguagest', 'gas ', 'condominio', 'condo ', 'inmobiliaria', 'hipotecario', 'servipag'] },
-            'Transporte': { color: '#0ea5e9', palabras: ['bencina', 'copec', 'aramco', 'esmax', 'shell', 'uber', 'taxi', 'parking', 'estacionamiento', 'saba ', 'pasajebus', 'pronto ', 'directemar', 'peaje', 'autopista'] },
-            'Alimentación': { color: '#10b981', palabras: ['jumbo', 'lider', 'unimarc', 'tottus', 'santa isabel', 'restaurant', 'sushi', 'cafe', 'café', 'mc donalds', 'burger', 'pizza', 'iguazu', 'birra', 'fudo', 'emporio', 'kiosclub', 'sb 7', 'express ', 'pie andino', 'del pedrega', 'cheesech', 'peregrin', 'acai'] },
-            'Entretenimiento': { color: '#8b5cf6', palabras: ['netflix', 'spotify', 'youtube', 'zapping', 'cine', 'teatro', 'punto ticket', 'pass line', 'openai', 'apple.com', 'disney', 'hbo', 'golf', 'termas'] },
-            'Salud': { color: '#ef4444', palabras: ['clinica', 'clínica', 'meds', 'alemana', 'farmacia', 'salcobrand', 'cruz verde', 'ahumada', 'gym', 'smart fit', 'metlife', 'consorcio', 'isapre', 'bubba', 'proden', 'dental'] },
-            'Educación': { color: '#06b6d4', palabras: ['colegio', 'universidad', 'monte tabor', 'curso', 'libro', 'editorial'] },
-            'Compras': { color: '#ec4899', palabras: ['falabella', 'paris ', 'ripley', 'easy ', 'sodimac', 'decathlon', 'zara', 'h&m', 'mercado libre', 'mercadopago', 'palumbo', 'umbrale', 'homevan', 'oneill', 'dockers', 'puma ', 'sioux', 'bath', 'saville', 'linde', 'gimport', 'piscineria', 'madersur', 'kushki', 'eparis', 'cencosud'] },
-            'Servicios': { color: '#f59e0b', palabras: ['movistar', 'entel', 'claro', 'vtr', 'wom', 'copesa', 'microsoft', 'seguro', 'seg auto', 'desgravamen', 'comision', 'comisión', 'plan plus', 'mantencion', 'iva ', 'impuesto', 'impto', 'interes', 'cotizaciones', 'sii', 'toku'] },
-            'Viajes': { color: '#14b8a6', palabras: ['air france', 'latam', 'sky airline', 'jetsmart', 'hotel', 'doubletree', 'booking', 'airbnb'] },
-            'Otros': { color: '#64748b', palabras: [] }
+            'Vivienda': { color: '#f97316', subcategorias: ['Arriendo/Dividendo','Gastos comunes','Luz','Agua','Gas','Otros'], palabras: ['arriendo', 'enel', 'aguas ', 'aguagest', 'gas ', 'condominio', 'condo ', 'inmobiliaria', 'hipotecario', 'servipag'] },
+            'Transporte': { color: '#0ea5e9', subcategorias: ['Bencina','Estacionamiento','Transporte público','Peajes','Mantención vehículo','Otros'], palabras: ['bencina', 'copec', 'aramco', 'esmax', 'shell', 'uber', 'taxi', 'parking', 'estacionamiento', 'saba ', 'pasajebus', 'pronto ', 'directemar', 'peaje', 'autopista'] },
+            'Alimentación': { color: '#10b981', subcategorias: ['Supermercado','Restaurantes','Delivery','Café/Snacks','Otros'], palabras: ['jumbo', 'lider', 'unimarc', 'tottus', 'santa isabel', 'restaurant', 'sushi', 'cafe', 'café', 'mc donalds', 'burger', 'pizza', 'iguazu', 'birra', 'fudo', 'emporio', 'kiosclub', 'sb 7', 'express ', 'pie andino', 'del pedrega', 'cheesech', 'peregrin', 'acai'] },
+            'Entretenimiento': { color: '#8b5cf6', subcategorias: ['Streaming','Salidas/Eventos','Deporte/Golf','Otros'], palabras: ['netflix', 'spotify', 'youtube', 'zapping', 'cine', 'teatro', 'punto ticket', 'pass line', 'openai', 'apple.com', 'disney', 'hbo', 'golf', 'termas'] },
+            'Salud': { color: '#ef4444', subcategorias: ['Clínica/Médico','Farmacia','Gimnasio','Seguros de salud','Otros'], palabras: ['clinica', 'clínica', 'meds', 'alemana', 'farmacia', 'salcobrand', 'cruz verde', 'ahumada', 'gym', 'smart fit', 'metlife', 'consorcio', 'isapre', 'bubba', 'proden', 'dental'] },
+            'Educación': { color: '#06b6d4', subcategorias: ['Colegio/Universidad','Cursos','Libros/Materiales','Otros'], palabras: ['colegio', 'universidad', 'monte tabor', 'curso', 'libro', 'editorial'] },
+            'Compras': { color: '#ec4899', subcategorias: ['Ropa','Electrónica/Hogar','Online','Otros'], palabras: ['falabella', 'paris ', 'ripley', 'easy ', 'sodimac', 'decathlon', 'zara', 'h&m', 'mercado libre', 'mercadopago', 'palumbo', 'umbrale', 'homevan', 'oneill', 'dockers', 'puma ', 'sioux', 'bath', 'saville', 'linde', 'gimport', 'piscineria', 'madersur', 'kushki', 'eparis', 'cencosud'] },
+            'Servicios': { color: '#f59e0b', subcategorias: ['Telefonía/Internet','Comisiones bancarias','Impuestos','Seguros','Otros'], palabras: ['movistar', 'entel', 'claro', 'vtr', 'wom', 'copesa', 'microsoft', 'seguro', 'seg auto', 'desgravamen', 'comision', 'comisión', 'plan plus', 'mantencion', 'iva ', 'impuesto', 'impto', 'interes', 'cotizaciones', 'sii', 'toku'] },
+            'Viajes': { color: '#14b8a6', subcategorias: ['Pasajes','Alojamiento','Otros'], palabras: ['air france', 'latam', 'sky airline', 'jetsmart', 'hotel', 'doubletree', 'booking', 'airbnb'] },
+            'Ingresos': { color: '#22c55e', subcategorias: ['Transferencia recibida','Sueldo','Reversa/Abono','Otros'], palabras: [] },
+            'Otros': { color: '#64748b', subcategorias: ['Sin clasificar'], palabras: [] }
         };
 
         let gastos = [];
         let selectedFile = null;
         let previewTransacciones = [];
+        let editandoId = null;
 
         // ═══════════ UTILIDADES ═══════════
 
         function parseMontoChileno(str) {
             // "94.178" → 94178 (punto = miles) | "22,43" → 22.43 (coma = decimal)
+            // Preserva el signo (negativo = reversa/abono en tarjeta)
             str = String(str).replace(/[$\s]/g, '');
-            if (str.includes('-')) return null; // negativos = pagos/abonos, excluir
+            const negativo = str.includes('-');
+            str = str.replace(/-/g, '');
+            let n;
             if (/,\d{1,2}$/.test(str)) {
-                return parseFloat(str.replace(/\./g, '').replace(',', '.'));
+                n = parseFloat(str.replace(/\./g, '').replace(',', '.'));
+            } else {
+                n = parseFloat(str.replace(/\./g, '').replace(/,/g, ''));
             }
-            const n = parseFloat(str.replace(/\./g, '').replace(/,/g, ''));
-            return isNaN(n) ? null : n;
+            if (isNaN(n)) return null;
+            return negativo ? -n : n;
         }
 
         function categorizar(descripcion) {
             const desc = descripcion.toLowerCase();
             for (const [cat, datos] of Object.entries(categorias)) {
                 for (const palabra of datos.palabras) {
-                    if (desc.includes(palabra)) return { categoria: cat };
+                    if (desc.includes(palabra)) return { categoria: cat, subcategoria: '' };
                 }
             }
-            return { categoria: 'Otros' };
+            return { categoria: 'Otros', subcategoria: '' };
         }
 
         function detectarBanco(texto) {
@@ -376,7 +449,6 @@
         }
 
         function detectarAnio(texto) {
-            // Busca años tipo 2024-2029 en el texto y devuelve el más frecuente
             const matches = texto.match(/20[2-3]\d/g);
             if (!matches) return null;
             const freq = {};
@@ -393,15 +465,10 @@
                 if (!item.str.trim()) continue;
                 const y = item.transform[5];
                 const x = item.transform[4];
-                // Buscar línea existente con Y similar (tolerancia 3px)
                 let linea = lineas.find(l => Math.abs(l.y - y) <= 3);
-                if (!linea) {
-                    linea = { y, items: [] };
-                    lineas.push(linea);
-                }
+                if (!linea) { linea = { y, items: [] }; lineas.push(linea); }
                 linea.items.push({ x, str: item.str });
             }
-            // Ordenar: Y descendente (arriba→abajo), X ascendente (izq→der)
             return lineas
                 .sort((a, b) => b.y - a.y)
                 .map(l => l.items.sort((a, b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim());
@@ -410,9 +477,9 @@
         const PALABRAS_EXCLUIR = [
             'pago automatico', 'monto cancelado', 'pago tarjeta', 'pago en servipag', 'pago en sii',
             'total ', 'saldo ', 'pago dolar', 'monto pagado', 'monto facturado', 'periodo', 'período',
-            'cupo ', 'facturacion', 'facturación', 'traspaso de:', 'transferencia desde',
+            'cupo ', 'facturacion', 'facturación',
             'sin movimiento', 'vencimiento', 'pagar hasta', 'comprobante', 'retencion',
-            'deposito', 'depósito', 'abono realizado', 'saldo anterior', 'nuevo saldo',
+            'saldo anterior', 'nuevo saldo',
             'estado de cuenta', 'informacion', 'información', 'detalle de', 'resumen',
             'ptos.', 'ptos ', 'monto deuda', 'excedan', 'hasta uf', 'interes moratorio', 'interés moratorio'
         ];
@@ -438,13 +505,17 @@
                 .trim();
         }
 
+        const PALABRAS_INGRESO_CTA = ['traspaso de:', 'transferencia desde', 'deposito', 'depósito', 'abono'];
+        const PALABRAS_CARGO_CTA = ['traspaso a:', 'transf', 'pac ', 'pago', 'giro', 'comision', 'com.',
+                                     'interes', 'impto', 'impuesto', 'seguro', 'plan ', 'iva'];
+
         function extraerTransacciones(lineas, anioDefault) {
             const trans = [];
 
             // PATRÓN A: Tarjetas de crédito — fecha DD/MM/YY(YY) + montos con $
             const pTarjeta = /(\d{2}\/\d{2}\/\d{2,4})\s+(?:(\d{4,13})\s+)?(.+?)\s*\$\s?(-?[\d.,]+)/;
 
-            // PATRÓN C: Tarjeta internacional (sin $) — ref larga + fecha + desc + PAIS + monto origen + monto USD
+            // PATRÓN B: Tarjeta internacional (sin $) — ref larga + fecha + desc + PAIS + monto origen + monto USD
             const pInternacional = /^\d{4}\s+[A-Z0-9]{15,}\s+(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+[A-Z]{2}\s+[\d.,]+\s+([\d.,]+)\s*$/;
 
             for (const linea of lineas) {
@@ -456,10 +527,15 @@
                     const [_, fechaStr, descRaw, montoUsd] = m;
                     const [d, mo, yRaw] = fechaStr.split('/');
                     const fecha = `20${yRaw}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
-                    const monto = parseMontoChileno(montoUsd);
-                    const desc = limpiarDescripcion(descRaw) + ' (USD)';
-                    if (monto && monto > 0) {
-                        trans.push({ fecha, desc: desc.substring(0, 80), monto });
+                    const montoRaw = parseMontoChileno(montoUsd);
+                    const desc = limpiarDescripcion(descRaw);
+                    if (montoRaw !== null && montoRaw !== 0) {
+                        trans.push({
+                            fecha, desc: desc.substring(0, 80),
+                            monto: Math.abs(montoRaw),
+                            tipo: montoRaw < 0 ? 'ingreso' : 'gasto',
+                            moneda: 'USD'
+                        });
                     }
                     continue;
                 }
@@ -472,12 +548,17 @@
                     const y = yRaw.length === 2 ? '20' + yRaw : yRaw;
                     const fecha = `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
                     const montos = [...linea.matchAll(/\$\s?(-?[\d.,]+)/g)].map(x => x[1]);
-                    const tieneCuota = /\d{2}\/\d{2}\s+\$\s?[\d.,]+\s*$/.test(linea) && montos.length >= 3;
+                    const tieneCuota = /\d{2}\/\d{2}\s+\$\s?-?[\d.,]+\s*$/.test(linea) && montos.length >= 3;
                     const montoStr = tieneCuota ? montos[montos.length - 1] : montos[0];
-                    const monto = parseMontoChileno(montoStr);
+                    const montoRaw = parseMontoChileno(montoStr);
                     const desc = limpiarDescripcion(descRaw);
-                    if (monto && monto > 0 && desc.length > 2) {
-                        trans.push({ fecha, desc: desc.substring(0, 80), monto });
+                    if (montoRaw !== null && montoRaw !== 0 && desc.length > 2) {
+                        trans.push({
+                            fecha, desc: desc.substring(0, 80),
+                            monto: Math.abs(montoRaw),
+                            tipo: montoRaw < 0 ? 'ingreso' : 'gasto',
+                            moneda: 'CLP'
+                        });
                     }
                     continue;
                 }
@@ -487,14 +568,11 @@
                 if (m) {
                     const fechaStr = m[1];
                     const tokens = m[2].split(/\s+/);
-                    // Recolectar tokens numéricos del final de la línea
                     const nums = [];
                     while (tokens.length && /^[\d.]+$/.test(tokens[tokens.length - 1])) {
                         nums.unshift(tokens.pop());
                     }
                     if (!nums.length) continue;
-                    // Si hay 2+ números: el último es el SALDO, el penúltimo es el MONTO,
-                    // y los anteriores (ej: N° documento) vuelven a la descripción.
                     let montoStr, extras = [];
                     if (nums.length === 1) {
                         montoStr = nums[0];
@@ -504,19 +582,21 @@
                     }
                     const desc = limpiarDescripcion([...tokens, ...extras].join(' '));
                     const descL = desc.toLowerCase();
-                    // Solo cargos conocidos (los abonos comunes ya están excluidos arriba)
-                    const esCargo = descL.includes('traspaso a:') || descL.includes('transf') ||
-                                    descL.includes('pac ') || descL.includes('pago') ||
-                                    descL.includes('giro') || descL.includes('comision') || descL.includes('com.') ||
-                                    descL.includes('interes') || descL.includes('impto') || descL.includes('impuesto') ||
-                                    descL.includes('seguro') || descL.includes('plan ') || descL.includes('iva');
-                    if (!esCargo) continue;
+
+                    const esIngreso = PALABRAS_INGRESO_CTA.some(p => descL.includes(p));
+                    const esCargo = !esIngreso && PALABRAS_CARGO_CTA.some(p => descL.includes(p));
+                    if (!esIngreso && !esCargo) continue;
 
                     const [d, mo] = fechaStr.split('/');
                     const fecha = `${anioDefault}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
                     const monto = parseMontoChileno(montoStr);
-                    if (monto && monto > 0 && desc.length > 2) {
-                        trans.push({ fecha, desc: desc.substring(0, 80), monto });
+                    if (monto && Math.abs(monto) > 0 && desc.length > 2) {
+                        trans.push({
+                            fecha, desc: desc.substring(0, 80),
+                            monto: Math.abs(monto),
+                            tipo: esIngreso ? 'ingreso' : 'gasto',
+                            moneda: 'CLP'
+                        });
                     }
                 }
             }
@@ -537,7 +617,7 @@
 
         async function procesarPDF() {
             if (!selectedFile) return mostrarAlerta('Selecciona un PDF primero', 'error');
-            
+
             document.getElementById('processingInfo').style.display = 'block';
             document.getElementById('btnProcessPDF').disabled = true;
 
@@ -559,11 +639,9 @@
                 document.getElementById('processingStatus').textContent = 'Analizando transacciones...';
                 document.getElementById('progressFill').style.width = '85%';
 
-                // Banco: manual o auto-detectado
                 const bancoManual = document.getElementById('bankSelect').value;
                 const banco = bancoManual || detectarBanco(textoCompleto);
 
-                // Año: detectado del PDF o seleccionado
                 const anioDetectado = detectarAnio(textoCompleto);
                 const anio = anioDetectado || document.getElementById('yearSelect').value;
 
@@ -577,7 +655,6 @@
                     return;
                 }
 
-                // Mostrar preview
                 mostrarPreview(banco);
             } catch (error) {
                 console.error(error);
@@ -590,22 +667,27 @@
         function mostrarPreview(banco) {
             document.getElementById('uploadStep1').style.display = 'none';
             document.getElementById('uploadStep2').style.display = 'block';
-            
-            const total = previewTransacciones.reduce((s, t) => s + t.monto, 0);
-            document.getElementById('previewResumen').textContent = 
-                `✅ ${previewTransacciones.length} transacciones detectadas · Total: $${total.toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
-            
+
+            const gastosCLP = previewTransacciones.filter(t => t.tipo === 'gasto' && t.moneda === 'CLP').reduce((s,t)=>s+t.monto,0);
+            const ingresosCLP = previewTransacciones.filter(t => t.tipo === 'ingreso' && t.moneda === 'CLP').reduce((s,t)=>s+t.monto,0);
+            const usd = previewTransacciones.filter(t => t.moneda === 'USD').reduce((s,t)=>s+t.monto,0);
+            document.getElementById('previewResumen').textContent =
+                `✅ ${previewTransacciones.length} movimientos · Gastos: $${gastosCLP.toLocaleString('es-CL',{maximumFractionDigits:0})} · Ingresos: $${ingresosCLP.toLocaleString('es-CL',{maximumFractionDigits:0})}` +
+                (usd ? ` · USD: US$${usd.toLocaleString('es-CL',{maximumFractionDigits:2})}` : '');
+
             document.getElementById('previewBanco').value = banco;
-            
+
             const tbody = document.getElementById('previewBody');
             tbody.innerHTML = '';
             previewTransacciones.forEach((t, i) => {
                 const tr = document.createElement('tr');
+                const esIngreso = t.tipo === 'ingreso';
                 tr.innerHTML = `
                     <td><input type="checkbox" class="preview-check" data-idx="${i}" checked></td>
                     <td>${t.fecha}</td>
-                    <td>${t.desc}</td>
-                    <td style="text-align:right;">$${t.monto.toLocaleString('es-CL', {maximumFractionDigits: 0})}</td>
+                    <td style="${esIngreso ? 'color:#34d399;' : ''}">${t.desc}</td>
+                    <td>${esIngreso ? '💰 Ingreso' : '💸 Gasto'}</td>
+                    <td style="text-align:right; ${esIngreso ? 'color:#34d399;' : ''}">${t.moneda === 'USD' ? 'US$' : '$'}${t.monto.toLocaleString('es-CL', {maximumFractionDigits: t.moneda === 'USD' ? 2 : 0})}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -623,20 +705,22 @@
 
             checks.forEach(c => {
                 const t = previewTransacciones[parseInt(c.dataset.idx)];
-                // Deduplicación: misma fecha + desc + monto + banco
-                const existe = gastos.some(g => g.fecha === t.fecha && g.desc === t.desc && g.monto === t.monto && g.banco === banco);
+                const existe = gastos.some(g => g.fecha === t.fecha && g.desc === t.desc && g.monto === t.monto && g.banco === banco && g.tipo === t.tipo);
                 if (existe) { duplicadas++; return; }
-                const { categoria } = categorizar(t.desc);
+                const { categoria, subcategoria } = t.tipo === 'ingreso'
+                    ? { categoria: 'Ingresos', subcategoria: '' }
+                    : categorizar(t.desc);
                 gastos.push({
                     id: Date.now() + Math.random(),
-                    fecha: t.fecha, desc: t.desc, monto: t.monto, banco, categoria
+                    fecha: t.fecha, desc: t.desc, monto: t.monto, banco,
+                    categoria, subcategoria, tipo: t.tipo, moneda: t.moneda
                 });
                 agregadas++;
             });
 
             guardarEnLocal();
             cerrarModalPDF();
-            let msg = `✅ ${agregadas} gastos agregados (${banco})`;
+            let msg = `✅ ${agregadas} movimientos agregados (${banco})`;
             if (duplicadas > 0) msg += ` · ${duplicadas} duplicados omitidos`;
             mostrarAlerta(msg, 'success');
             actualizarFiltros();
@@ -664,7 +748,6 @@
             selectedFile = null;
             document.getElementById('filePDF').value = '';
             document.getElementById('fileLabel').textContent = '📁 Haz clic para seleccionar un PDF';
-            // Poblar selector de años
             const ySel = document.getElementById('yearSelect');
             if (!ySel.options.length) {
                 const actual = new Date().getFullYear();
@@ -676,34 +759,72 @@
             }
         }
 
-        // ═══════════ RESTO DE LA APP ═══════════
+        // ═══════════ CATEGORÍA / SUBCATEGORÍA (selects dependientes) ═══════════
 
-        function cargarDatos() {
-            const saved = localStorage.getItem('gastos_dashboard');
-            if (saved) try { gastos = JSON.parse(saved); } catch (e) { console.error(e); }
-            actualizarFiltros();
-            actualizarDatos();
+        function poblarSelectCategorias(selectId, incluirAutomatica) {
+            const sel = document.getElementById(selectId);
+            sel.innerHTML = incluirAutomatica ? '<option value="">🔍 Automática (según descripción)</option>' : '';
+            Object.keys(categorias).forEach(cat => {
+                const o = document.createElement('option');
+                o.value = cat; o.textContent = cat;
+                sel.appendChild(o);
+            });
         }
 
-        function guardarEnLocal() {
-            localStorage.setItem('gastos_dashboard', JSON.stringify(gastos));
+        function onCategoriaChange(catSelectId, subSelectId) {
+            const cat = document.getElementById(catSelectId).value;
+            const subSel = document.getElementById(subSelectId);
+            subSel.innerHTML = '';
+            if (!cat) {
+                subSel.disabled = true;
+                const o = document.createElement('option');
+                o.textContent = '(según categoría automática)';
+                subSel.appendChild(o);
+                return;
+            }
+            subSel.disabled = false;
+            categorias[cat].subcategorias.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s; o.textContent = s;
+                subSel.appendChild(o);
+            });
         }
+
+        // ═══════════ NUEVO / EDITAR MOVIMIENTO ═══════════
 
         function openNewGasto() {
+            editandoId = null;
+            document.getElementById('tituloModalGasto').textContent = 'Nuevo movimiento';
+            document.getElementById('btnGuardarGasto').textContent = 'Guardar';
             document.getElementById('inputFecha').valueAsDate = new Date();
+            document.getElementById('inputDescripcion').value = '';
+            document.getElementById('inputMonto').value = '';
+            document.getElementById('inputTipo').value = 'gasto';
+            document.getElementById('inputMoneda').value = 'CLP';
+            document.getElementById('inputBanco').selectedIndex = 0;
+            poblarSelectCategorias('inputCategoria', true);
+            document.getElementById('inputCategoria').value = '';
+            onCategoriaChange('inputCategoria', 'inputSubcategoria');
             document.getElementById('modalNuevoGasto').classList.add('active');
         }
 
-        function openImport() {
-            document.getElementById('modalImport').classList.add('active');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        window.onclick = function(e) {
-            if (e.target.classList.contains('modal')) e.target.classList.remove('active');
+        function openEditGasto(id) {
+            const g = gastos.find(x => x.id === id);
+            if (!g) return;
+            editandoId = id;
+            document.getElementById('tituloModalGasto').textContent = 'Editar movimiento';
+            document.getElementById('btnGuardarGasto').textContent = 'Guardar cambios';
+            document.getElementById('inputFecha').value = g.fecha;
+            document.getElementById('inputDescripcion').value = g.desc;
+            document.getElementById('inputMonto').value = g.monto;
+            document.getElementById('inputTipo').value = g.tipo || 'gasto';
+            document.getElementById('inputMoneda').value = g.moneda || 'CLP';
+            document.getElementById('inputBanco').value = g.banco;
+            poblarSelectCategorias('inputCategoria', true);
+            document.getElementById('inputCategoria').value = g.categoria || '';
+            onCategoriaChange('inputCategoria', 'inputSubcategoria');
+            if (g.subcategoria) document.getElementById('inputSubcategoria').value = g.subcategoria;
+            document.getElementById('modalNuevoGasto').classList.add('active');
         }
 
         function guardarGasto(e) {
@@ -712,14 +833,65 @@
             const desc = document.getElementById('inputDescripcion').value;
             const monto = parseFloat(document.getElementById('inputMonto').value);
             const banco = document.getElementById('inputBanco').value;
+            const tipo = document.getElementById('inputTipo').value;
+            const moneda = document.getElementById('inputMoneda').value;
             if (!desc || !monto) return mostrarAlerta('Completa los campos', 'error');
-            const { categoria } = categorizar(desc);
-            gastos.push({ id: Date.now(), fecha, desc, monto, banco, categoria });
+
+            let categoria = document.getElementById('inputCategoria').value;
+            let subcategoria = document.getElementById('inputSubcategoria').value;
+            if (!categoria) {
+                const auto = categorizar(desc);
+                categoria = auto.categoria;
+                subcategoria = '';
+            }
+
+            if (editandoId !== null) {
+                const g = gastos.find(x => x.id === editandoId);
+                Object.assign(g, { fecha, desc, monto: Math.abs(monto), banco, categoria, subcategoria, tipo, moneda });
+                mostrarAlerta('✅ Movimiento actualizado', 'success');
+            } else {
+                gastos.push({ id: Date.now(), fecha, desc, monto: Math.abs(monto), banco, categoria, subcategoria, tipo, moneda });
+                mostrarAlerta('✅ Movimiento agregado', 'success');
+            }
+
             guardarEnLocal();
             closeModal('modalNuevoGasto');
-            mostrarAlerta('✅ Gasto agregado', 'success');
+            editandoId = null;
             actualizarFiltros();
             actualizarDatos();
+        }
+
+        // ═══════════ RESTO DE LA APP ═══════════
+
+        function cargarDatos() {
+            const saved = localStorage.getItem('gastos_dashboard');
+            if (saved) try { gastos = JSON.parse(saved); } catch (e) { console.error(e); }
+            // Migración de datos antiguos (sin tipo/moneda/subcategoria)
+            gastos.forEach(g => {
+                if (!g.tipo) g.tipo = 'gasto';
+                if (!g.moneda) g.moneda = 'CLP';
+                if (g.subcategoria === undefined) g.subcategoria = '';
+                if (!categorias[g.categoria]) g.categoria = 'Otros';
+            });
+            actualizarFiltros();
+            actualizarDatos();
+        }
+
+        function guardarEnLocal() {
+            localStorage.setItem('gastos_dashboard', JSON.stringify(gastos));
+        }
+
+        function openImport() {
+            document.getElementById('modalImport').classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            if (id === 'modalNuevoGasto') editandoId = null;
+        }
+
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) e.target.classList.remove('active');
         }
 
         function importarDatos() {
@@ -733,8 +905,8 @@
                     const [fecha, desc, montoStr, banco] = partes;
                     const monto = parseFloat(montoStr.replace(/[$,]/g, ''));
                     if (!isNaN(monto) && monto > 0) {
-                        const { categoria } = categorizar(desc);
-                        gastos.push({ id: Date.now() + idx, fecha, desc, monto, banco, categoria });
+                        const { categoria, subcategoria } = categorizar(desc);
+                        gastos.push({ id: Date.now() + idx, fecha, desc, monto, banco, categoria, subcategoria, tipo: 'gasto', moneda: 'CLP' });
                         count++;
                     }
                 }
@@ -764,8 +936,9 @@
             const meses = [...new Set(gastos.map(g => g.fecha.slice(0, 7)))].sort().reverse();
             const selectMes = document.getElementById('filterMes');
             const selectBanco = document.getElementById('filterBanco');
+            const selectCategoria = document.getElementById('filterCategoria');
             const bancos = [...new Set(gastos.map(g => g.banco))];
-            const mesActual = selectMes.value, bancoActual = selectBanco.value;
+            const mesActual = selectMes.value, bancoActual = selectBanco.value, catActual = selectCategoria.value;
 
             selectMes.innerHTML = '<option value="">Todos los meses</option>';
             meses.forEach(m => {
@@ -782,35 +955,54 @@
                 selectBanco.appendChild(opt);
             });
             selectBanco.value = bancoActual || 'todos';
+
+            selectCategoria.innerHTML = '<option value="todos">Todas las categorías</option>';
+            Object.keys(categorias).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                selectCategoria.appendChild(opt);
+            });
+            selectCategoria.value = catActual || 'todos';
         }
 
         function actualizarDatos() {
             const mes = document.getElementById('filterMes').value;
             const banco = document.getElementById('filterBanco').value;
+            const tipoFiltro = document.getElementById('filterTipo').value;
+            const catFiltro = document.getElementById('filterCategoria').value;
+
             const gastosFiltrados = gastos.filter(g => {
                 const mesParte = g.fecha.slice(0, 7);
-                return (!mes || mesParte === mes) && (banco === 'todos' || g.banco === banco);
+                return (!mes || mesParte === mes)
+                    && (banco === 'todos' || g.banco === banco)
+                    && (tipoFiltro === 'todos' || g.tipo === tipoFiltro)
+                    && (catFiltro === 'todos' || g.categoria === catFiltro);
             });
 
-            const total = gastosFiltrados.reduce((s, g) => s + g.monto, 0);
-            document.getElementById('totalGastos').textContent = '$' + total.toLocaleString('es-CL', { maximumFractionDigits: 0 });
-            document.getElementById('totalTransacciones').textContent = gastosFiltrados.length;
-            const prom = gastosFiltrados.length ? total / gastosFiltrados.length : 0;
-            document.getElementById('promedio').textContent = '$' + prom.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+            const totalGastosCLP = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'CLP').reduce((s,g)=>s+g.monto,0);
+            const totalIngresosCLP = gastosFiltrados.filter(g => g.tipo === 'ingreso' && g.moneda === 'CLP').reduce((s,g)=>s+g.monto,0);
+            const totalGastosUSD = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'USD').reduce((s,g)=>s+g.monto,0);
 
+            document.getElementById('totalGastosCLP').textContent = '$' + totalGastosCLP.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+            document.getElementById('totalIngresosCLP').textContent = '$' + totalIngresosCLP.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+            document.getElementById('totalGastosUSD').textContent = 'US$' + totalGastosUSD.toLocaleString('es-CL', { maximumFractionDigits: 2 });
+            document.getElementById('totalTransacciones').textContent = gastosFiltrados.length;
+
+            // Gráficos: solo gastos en CLP
+            const gastosClpSolo = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'CLP');
             const porCat = {}, porBanco = {};
             for (const cat of Object.keys(categorias)) {
-                porCat[cat] = gastosFiltrados.filter(g => g.categoria === cat).reduce((s, g) => s + g.monto, 0);
+                porCat[cat] = gastosClpSolo.filter(g => g.categoria === cat).reduce((s, g) => s + g.monto, 0);
             }
-            gastosFiltrados.forEach(g => { porBanco[g.banco] = (porBanco[g.banco] || 0) + g.monto; });
+            gastosClpSolo.forEach(g => { porBanco[g.banco] = (porBanco[g.banco] || 0) + g.monto; });
 
             const chartLeft = document.getElementById('chartLeft');
-            chartLeft.innerHTML = '';
+            chartLeft.innerHTML = '<h3>Por categoría</h3>';
             Object.entries(porCat)
                 .filter(([_, m]) => m > 0)
                 .sort((a, b) => b[1] - a[1])
                 .forEach(([cat, monto]) => {
-                    const pct = total ? (monto / total) * 100 : 0;
+                    const pct = totalGastosCLP ? (monto / totalGastosCLP) * 100 : 0;
                     const div = document.createElement('div');
                     div.className = 'category-bar';
                     const color = categorias[cat].color;
@@ -822,9 +1014,12 @@
                         <div class="bar"><div class="bar-fill" style="background: ${color}; width: ${pct}%"></div></div>`;
                     chartLeft.appendChild(div);
                 });
+            if (Object.values(porCat).every(v => v === 0)) {
+                chartLeft.innerHTML += '<p class="empty-message" style="padding:8px;">Sin gastos en CLP con estos filtros</p>';
+            }
 
             const chartRight = document.getElementById('chartRight');
-            chartRight.innerHTML = '<h3>Por banco</h3>';
+            chartRight.innerHTML = '<h3>Por banco (gastos CLP)</h3>';
             Object.entries(porBanco).forEach(([b, monto]) => {
                 const div = document.createElement('div');
                 div.className = 'bank-item';
@@ -835,25 +1030,34 @@
             const tbody = document.getElementById('tablaGastosBody');
             tbody.innerHTML = '';
             if (gastosFiltrados.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Sin gastos registrados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Sin movimientos registrados</td></tr>';
             } else {
                 gastosFiltrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(g => {
                     const color = categorias[g.categoria] ? categorias[g.categoria].color : '#64748b';
+                    const esIngreso = g.tipo === 'ingreso';
+                    const simboloMoneda = g.moneda === 'USD' ? 'US$' : '$';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${g.fecha}</td>
                         <td><strong>${g.desc}</strong></td>
-                        <td><span class="badge" style="background: ${color}20; color: ${color}">${g.categoria}</span></td>
+                        <td>
+                            <span class="badge" style="background: ${color}20; color: ${color}">${g.categoria}</span>
+                            ${g.subcategoria ? `<span class="subcat">${g.subcategoria}</span>` : ''}
+                        </td>
                         <td>${g.banco}</td>
-                        <td style="text-align: right;">$${g.monto.toLocaleString('es-CL', { maximumFractionDigits: 0 })}</td>
-                        <td style="text-align: center;"><button class="btn btn-danger" onclick="eliminarGasto(${g.id})" style="padding: 4px 8px; font-size: 12px;">✕</button></td>`;
+                        <td><span class="badge" style="background: ${esIngreso ? '#22c55e20' : '#64748b20'}; color: ${esIngreso ? '#34d399' : '#94a3b8'}">${esIngreso ? '💰 Ingreso' : '💸 Gasto'}</span>${g.moneda === 'USD' ? '<span class="subcat">USD</span>' : ''}</td>
+                        <td style="text-align: right;" class="${esIngreso ? 'monto-ingreso' : 'monto-gasto'}">${simboloMoneda}${g.monto.toLocaleString('es-CL', { maximumFractionDigits: g.moneda === 'USD' ? 2 : 0 })}</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-warning btn-icon" onclick="openEditGasto(${g.id})" title="Editar">✏️</button>
+                            <button class="btn btn-danger btn-icon" onclick="eliminarGasto(${g.id})" title="Eliminar">✕</button>
+                        </td>`;
                     tbody.appendChild(tr);
                 });
             }
         }
 
         function eliminarGasto(id) {
-            if (confirm('¿Eliminar este gasto?')) {
+            if (confirm('¿Eliminar este movimiento?')) {
                 gastos = gastos.filter(g => g.id !== id);
                 guardarEnLocal();
                 actualizarDatos();
