@@ -606,8 +606,15 @@
             // PATRÓN A: Tarjetas de crédito — fecha DD/MM/YY(YY) + montos con $
             const pTarjeta = /(\d{2}\/\d{2}\/\d{2,4})\s+(?:(\d{4,13})\s+)?(.+?)\s*\$\s?(-?[\d.,]+)/;
 
-            // PATRÓN B: Tarjeta internacional (sin $) — ref larga + fecha + desc + PAIS + monto origen + monto USD
-            const pInternacional = /^\d{4}\s+[A-Z0-9]{15,}\s+(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+[A-Z]{2}\s+[\d.,]+\s+([\d.,]+)\s*$/;
+            // PATRÓN B: Tarjeta internacional (sin $) — ref + fecha + desc + PAIS + monto origen + monto USD
+            const pInternacional = /^\d{4}\s+[A-Z0-9]{8,}\s+(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+[A-Z]{2}\s+[\d.,]+\s+([\d.,]+)\s*$/;
+            // Detección "floja": cualquier línea que TERMINE en "código país (2 letras) +
+            // monto + monto" con formato decimal de coma, sin signo "$". Se usa como red de
+            // seguridad: si una transacción internacional no calza exacto con el patrón
+            // estricto de arriba (ref. más corta, glosa partida en varias líneas, etc.), NO
+            // debe caer en el patrón de tarjetas en pesos. Es preferible perder esa
+            // transacción rara a contarla como gasto en CLP con el monto en dólares.
+            const pareceInternacional = /\b[A-Z]{2}\s+[\d.,]+,[\d]{1,2}\s+[\d.,]+,[\d]{1,2}\s*$/;
 
             for (let i = 0; i < lineas.length; i++) {
                 const linea = lineas[i];
@@ -633,6 +640,10 @@
                     }
                     continue;
                 }
+                // Red de seguridad: parece una línea internacional pero no calzó exacto
+                // (glosa partida en varias líneas, formato levemente distinto, etc.) y
+                // NO tiene "$" propio → la descartamos en vez de arriesgar contarla en CLP.
+                if (!linea.includes('$') && pareceInternacional.test(linea)) continue;
 
                 // ── Tarjetas nacionales ──
                 // Algunas glosas (ej. MercadoPago, "PUC WEB PREGRADO...") vienen partidas en

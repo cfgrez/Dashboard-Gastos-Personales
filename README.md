@@ -217,3 +217,15 @@ Se confirmó además que:
 - Los montos en USD **nunca** se suman al total en pesos: los totales, gráficos por categoría y por banco filtran estrictamente por el campo `moneda` en todo el código.
 
 Verificado con 6 variantes (3 casos originales + 3 nuevas: Visa, Mastercard, Internacional) más 3 casos de control para confirmar que no se sobre-excluye ningún pago legítimo (PAC CONSORCIO HIPOTECARIO, PAC TOKU SPA, PAGO EN SII.CL siguen contándose normal). Se re-corrió toda la batería de pruebas acumulada sin ninguna regresión.
+
+## 🔧 Corrección crítica: dólares contados como pesos
+
+Se encontró la causa real del problema: el patrón que reconoce transacciones de tarjetas internacionales (en USD) era muy estricto (exigía una referencia de 15+ caracteres y un formato exacto en una sola línea). Cuando una transacción real no calzaba con ese formato estricto (referencia más corta, glosa partida en varias líneas, etc.), la línea "caía" al patrón de tarjetas nacionales (en pesos) y el monto en dólares terminaba sumado al gasto en CLP.
+
+Dos correcciones:
+1. El patrón internacional ahora acepta referencias más cortas (8+ caracteres en vez de 15+), calzando correctamente en más casos.
+2. Se agregó una **red de seguridad**: cualquier línea que tenga la forma típica de una transacción internacional (código de país de 2 letras + dos montos con formato decimal de coma, sin signo "$") pero que no calce exacto con el patrón estricto, se **descarta por completo** en vez de arriesgarse a contarla como gasto en pesos. Es preferible perder una transacción atípica a contarla mal.
+
+Se auditó también todo el código de cálculo de totales (estadísticas, gráfico por categoría, gráfico por banco) confirmando que ya filtraban correctamente por el campo `moneda` — el problema estaba exclusivamente en el parser, no en los totales.
+
+Verificado con 5 escenarios: formato internacional original (sigue funcionando), referencia corta (ahora calza), línea internacional atípica (se descarta, nunca cuenta como CLP), transacción normal en pesos (no afectada), y una mezcla de ambas monedas en el mismo lote (separación exacta, sin mezclar). Se re-corrió toda la batería de pruebas acumulada sin ninguna regresión.
