@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Dashboard de Gastos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1500px; margin: 0 auto; }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px; flex-wrap: wrap; gap: 16px;
+        }
+        .header h1 { font-size: 32px; font-weight: bold; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;
+            font-size: 14px; font-weight: 600; transition: all 0.3s ease;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #475569; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-icon { padding: 5px 9px; font-size: 12px; }
+        .card {
+            background: rgba(30, 41, 59, 0.8); border: 1px solid #334155;
+            border-radius: 12px; padding: 20px; margin-bottom: 16px;
+        }
+        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+        .filter-group label {
+            display: block; font-size: 12px; color: #94a3b8;
+            margin-bottom: 6px; font-weight: 600;
+        }
+        select, input, textarea {
+            width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.8);
+            color: #e2e8f0; border: 1px solid #334155; border-radius: 6px;
+            font-size: 14px; font-family: inherit;
+        }
+        select:focus, input:focus { outline: none; border-color: #3b82f6; }
+        select:disabled { opacity: 0.5; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 30px; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 26px; font-weight: bold; color: #60a5fa; }
+        .stat-label { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); display: none;
+            align-items: flex-start; justify-content: center; z-index: 1000; overflow-y: auto;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #1e293b; padding: 30px; border-radius: 12px;
+            max-width: 700px; width: 100%; margin: auto;
+        }
+        .modal-content h2 { margin: 0 0 20px; font-size: 20px; }
+        .modal-content label {
+            display: block; font-size: 12px; color: #94a3b8;
+            margin-bottom: 6px; margin-top: 12px; font-weight: 600;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        textarea { min-height: 150px; resize: vertical; }
+        .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        .file-input-wrapper { position: relative; overflow: hidden; display: block; width: 100%; }
+        .file-input-wrapper input[type='file'] { position: absolute; left: -9999px; }
+        .file-input-label {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 20px; background: rgba(16, 185, 129, 0.1);
+            border: 2px dashed #10b981; border-radius: 8px; cursor: pointer;
+            font-weight: 600; color: #10b981;
+        }
+        .file-input-label:hover { background: rgba(16, 185, 129, 0.2); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table th {
+            text-align: left; padding: 12px; border-bottom: 2px solid #334155;
+            color: #94a3b8; font-weight: 600; background: rgba(15, 23, 42, 0.8);
+        }
+        table td { padding: 10px 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+        table tr:hover { background: rgba(59, 130, 246, 0.1); }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .subcat { display: block; font-size: 10.5px; color: #94a3b8; margin-top: 3px; }
+        .chart-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .chart-left h3, .chart-right h3 { margin: 0 0 12px; font-size: 14px; color: #94a3b8; }
+        .category-bar { margin-bottom: 16px; }
+        .category-bar-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+        .bar { height: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; }
+        .bank-item {
+            display: flex; justify-content: space-between; padding: 10px;
+            background: rgba(15, 23, 42, 0.5); border-radius: 6px;
+            margin-bottom: 8px; font-size: 14px; border-left: 3px solid #3b82f6;
+        }
+        .color-sample { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; }
+        .empty-message { color: #94a3b8; text-align: center; padding: 20px; }
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+        .alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #86efac; }
+        .alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+        .table-container { overflow-x: auto; }
+        .progress-bar { width: 100%; height: 4px; background: rgba(15,23,42,0.8); border-radius: 2px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: #10b981; width: 0%; transition: width 0.3s ease; }
+        .preview-table { max-height: 400px; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; margin-top: 12px; }
+        .preview-table table td, .preview-table table th { padding: 8px; font-size: 12px; }
+        .monto-ingreso { color: #34d399; }
+        .monto-gasto { color: #e2e8f0; }
+        .actions-cell { display: flex; gap: 6px; justify-content: center; }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; }
+            .chart-container { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            table { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Dashboard Gastos</h1>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="openNewGasto()">+ Nuevo movimiento</button>
+                <button class="btn btn-success" onclick="openUploadPDF()">📤 Subir cartola PDF</button>
+                <button class="btn btn-secondary" onclick="openImport()">📥 Importar texto</button>
+                <button class="btn btn-secondary" onclick="exportarRespaldo()">💾 Exportar respaldo</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('fileRespaldo').click()">📂 Restaurar respaldo</button>
+                <input type="file" id="fileRespaldo" accept=".json" style="display:none;" onchange="importarRespaldo(event)">
+                <button class="btn btn-secondary" onclick="openGestionBancos()">🏦 Bancos</button>
+            </div>
+        </div>
+
+        <div class="card filters">
+            <div class="filter-group">
+                <label>Mes</label>
+                <select id="filterMes" onchange="actualizarDatos()">
+                    <option value="">Todos los meses</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Banco</label>
+                <select id="filterBanco" onchange="actualizarDatos()">
+                    <option value="todos">Todos los bancos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tipo</label>
+                <select id="filterTipo" onchange="actualizarDatos()">
+                    <option value="todos">Gastos + Ingresos</option>
+                    <option value="gasto">Solo gastos</option>
+                    <option value="ingreso">Solo ingresos/abonos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Categoría</label>
+                <select id="filterCategoria" onchange="actualizarDatos()">
+                    <option value="todos">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Buscar descripción</label>
+                <input type="text" id="filterTexto" placeholder="ej: golf, netflix..." oninput="actualizarDatos()">
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="card stat">
+                <div class="stat-value" id="totalGastosCLP" style="color:#f87171;">$0</div>
+                <div class="stat-label">Gastos (CLP)</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="totalIngresosCLP" style="color:#34d399;">$0</div>
+                <div class="stat-label">Ingresos / Abonos (CLP)</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="totalGastosUSD" style="color:#60a5fa;">US$0</div>
+                <div class="stat-label">Gastos (USD)</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="totalTransacciones" style="color: #e2e8f0;">0</div>
+                <div class="stat-label">Transacciones</div>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="card">
+            <h2 style="margin: 0 0 20px;">📊 Gastos por categoría (CLP)</h2>
+            <div class="chart-container">
+                <div class="chart-left" id="chartLeft"></div>
+                <div class="chart-right" id="chartRight"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin: 0 0 20px;">📋 Detalle de movimientos</h2>
+            <div class="table-container">
+                <table id="tablaGastos">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th><th>Descripción</th><th>Categoría</th>
+                            <th>Banco</th><th>Tipo</th><th style="text-align: right;">Monto</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaGastosBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo / Editar movimiento -->
+    <div class="modal" id="modalNuevoGasto">
+        <div class="modal-content">
+            <h2 id="tituloModalGasto">Nuevo movimiento</h2>
+            <form onsubmit="guardarGasto(event)">
+                <div class="form-row">
+                    <div>
+                        <label>Fecha</label>
+                        <input type="date" id="inputFecha" required>
+                    </div>
+                    <div>
+                        <label>Monto</label>
+                        <input type="number" id="inputMonto" placeholder="0" step="0.01" required>
+                    </div>
+                </div>
+                <label>Descripción</label>
+                <input type="text" id="inputDescripcion" placeholder="ej: Jumbo, Netflix..." oninput="actualizarContadorIguales()" required>
+
+                <div class="form-row">
+                    <div>
+                        <label>Tipo</label>
+                        <select id="inputTipo">
+                            <option value="gasto">💸 Gasto</option>
+                            <option value="ingreso">💰 Ingreso / Abono</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Moneda</label>
+                        <select id="inputMoneda">
+                            <option value="CLP">CLP ($)</option>
+                            <option value="USD">USD (US$)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>Banco/Tarjeta</label>
+                <select id="inputBanco" required></select>
+
+                <div class="form-row">
+                    <div>
+                        <label>Categoría</label>
+                        <select id="inputCategoria" onchange="onCategoriaChange('inputCategoria','inputSubcategoria')">
+                            <option value="">🔍 Automática (según descripción)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Subcategoría</label>
+                        <select id="inputSubcategoria"></select>
+                    </div>
+                </div>
+
+                <label id="labelAplicarTodos" style="margin-top:16px; display:none; align-items:flex-start; gap:8px; cursor:pointer; font-weight:400;">
+                    <input type="checkbox" id="inputAplicarTodos" style="width:auto; margin-top:2px;">
+                    <span style="font-size:12.5px; color:#cbd5e1;">Aplicar esta categoría/subcategoría a <strong>todos</strong> los movimientos con esta misma descripción (<span id="cantidadIguales">0</span> encontrados)</span>
+                </label>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-primary" id="btnGuardarGasto">Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modalNuevoGasto')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Subir PDF -->
+    <div class="modal" id="modalUploadPDF">
+        <div class="modal-content">
+            <h2>📤 Subir cartola bancaria (PDF)</h2>
+
+            <div id="uploadStep1">
+                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+                    Soporta: Banco de Chile, Santander, Security (cuentas y tarjetas).
+                    Se detectan gastos, ingresos/abonos y reversas. Después de procesar podrás revisar antes de agregar.
+                </p>
+                <label>Selecciona archivo PDF</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="filePDF" accept=".pdf" onchange="handleFileSelect(event)">
+                    <label class="file-input-label" for="filePDF">
+                        <span id="fileLabel">📁 Haz clic para seleccionar un PDF</span>
+                    </label>
+                </div>
+                <label>Banco (se intenta auto-detectar, puedes corregirlo)</label>
+                <select id="bankSelect"></select>
+                <label>Año del período (para cartolas con fechas sin año, ej: "02/01")</label>
+                <select id="yearSelect"></select>
+                <div id="processingInfo" style="display: none; margin-top: 16px;">
+                    <p style="font-size: 12px; margin-bottom: 8px;">Procesando PDF...</p>
+                    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                    <p id="processingStatus" style="font-size: 11px; color: #94a3b8; margin-top: 4px;"></p>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-success" id="btnProcessPDF" onclick="procesarPDF()">🚀 Procesar PDF</button>
+                    <button class="btn btn-secondary" onclick="closeModal('modalUploadPDF')">Cancelar</button>
+                </div>
+            </div>
+
+            <div id="uploadStep2" style="display: none;">
+                <p style="font-size: 13px; color: #86efac; margin-bottom: 8px;" id="previewResumen"></p>
+                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                    Revisa lo detectado. Verde = ingreso/abono, blanco = gasto. Desmarca lo que no quieras agregar.
+                </p>
+                <label>Banco para estas transacciones:</label>
+                <select id="previewBanco"></select>
+                <div class="preview-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="checkAll" checked onchange="toggleAllPreview()"></th>
+                                <th>Fecha</th><th>Descripción</th><th>Tipo</th><th style="text-align:right;">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-success" onclick="confirmarPreview()">✅ Agregar seleccionadas</button>
+                    <button class="btn btn-secondary" onclick="cancelarPreview()">← Volver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar bancos -->
+    <div class="modal" id="modalBancos">
+        <div class="modal-content">
+            <h2>🏦 Gestionar bancos y tarjetas</h2>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+                Los bancos de fábrica no se pueden borrar (evita romper tus datos históricos). Puedes agregar los tuyos aquí y aparecerán en todos los selectores de banco.
+            </p>
+            <label>Bancos de fábrica</label>
+            <div id="listaBancosDefault" style="font-size:12px; color:#94a3b8; margin-top:6px; line-height:1.8;"></div>
+
+            <label style="margin-top:20px;">Tus bancos agregados</label>
+            <div id="listaBancosCustom" style="margin-top:6px;"></div>
+
+            <div class="form-row" style="margin-top:12px;">
+                <input type="text" id="inputNuevoBanco" placeholder="ej: Banco Falabella, BCI, Itaú...">
+                <button class="btn btn-primary" onclick="agregarBancoCustom()">+ Agregar</button>
+            </div>
+
+            <div class="modal-buttons" style="grid-template-columns: 1fr;">
+                <button class="btn btn-secondary" onclick="closeModal('modalBancos')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importar texto -->
+    <div class="modal" id="modalImport">
+        <div class="modal-content">
+            <h2>📥 Importar gastos (formato texto)</h2>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+                <strong>Formato:</strong> fecha | descripción | monto | banco<br>
+                <strong>Ej:</strong> 2026-01-15 | Jumbo | 45000 | Banco Santander<br>
+                (se importan siempre como Gasto en CLP; edítalos después si es necesario)
+            </p>
+            <label>Pega tus datos aquí:</label>
+            <textarea id="textImport"></textarea>
+            <div class="modal-buttons">
+                <button class="btn btn-success" onclick="importarDatos()">Importar</button>
+                <button class="btn btn-secondary" onclick="closeModal('modalImport')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const categorias = {
+            'Vivienda': { color: '#f97316', subcategorias: ['Arriendo/Dividendo','Gastos comunes','Luz','Agua','Gas','Otros'], palabras: ['arriendo', 'enel', 'aguas ', 'aguagest', 'gas ', 'condominio', 'condo ', 'inmobiliaria', 'hipotecario', 'servipag'] },
+            'Transporte': { color: '#0ea5e9', subcategorias: ['Bencina','Estacionamiento','Transporte público','Peajes','Mantención vehículo','Otros'], palabras: ['bencina', 'copec', 'aramco', 'esmax', 'shell', 'uber', 'taxi', 'parking', 'estacionamiento', 'saba ', 'pasajebus', 'pronto ', 'directemar', 'peaje', 'autopista'] },
+            'Alimentación': { color: '#10b981', subcategorias: ['Supermercado','Restaurantes','Delivery','Café/Snacks','Otros'], palabras: ['jumbo', 'lider', 'unimarc', 'tottus', 'santa isabel', 'restaurant', 'sushi', 'cafe', 'café', 'mc donalds', 'burger', 'pizza', 'iguazu', 'birra', 'fudo', 'emporio', 'kiosclub', 'sb 7', 'express ', 'pie andino', 'del pedrega', 'cheesech', 'peregrin', 'acai'] },
+            'Entretenimiento': { color: '#8b5cf6', subcategorias: ['Streaming','Salidas/Eventos','Deporte/Golf','Otros'], palabras: ['netflix', 'spotify', 'youtube', 'zapping', 'cine', 'teatro', 'punto ticket', 'pass line', 'openai', 'apple.com', 'disney', 'hbo', 'golf', 'termas'] },
+            'Salud': { color: '#ef4444', subcategorias: ['Clínica/Médico','Farmacia','Gimnasio','Seguros de salud','Otros'], palabras: ['clinica', 'clínica', 'meds', 'alemana', 'farmacia', 'salcobrand', 'cruz verde', 'ahumada', 'gym', 'smart fit', 'metlife', 'consorcio', 'isapre', 'bubba', 'proden', 'dental'] },
+            'Educación': { color: '#06b6d4', subcategorias: ['Colegio/Universidad','Cursos','Libros/Materiales','Otros'], palabras: ['colegio', 'universidad', 'monte tabor', 'curso', 'libro', 'editorial'] },
+            'Compras': { color: '#ec4899', subcategorias: ['Ropa','Electrónica/Hogar','Online','Otros'], palabras: ['falabella', 'paris ', 'ripley', 'easy ', 'sodimac', 'decathlon', 'zara', 'h&m', 'mercado libre', 'mercadopago', 'palumbo', 'umbrale', 'homevan', 'oneill', 'dockers', 'puma ', 'sioux', 'bath', 'saville', 'linde', 'gimport', 'piscineria', 'madersur', 'kushki', 'eparis', 'cencosud'] },
+            'Servicios': { color: '#f59e0b', subcategorias: ['Telefonía/Internet','Comisiones bancarias','Impuestos','Seguros','Otros'], palabras: ['movistar', 'entel', 'claro', 'vtr', 'wom', 'copesa', 'microsoft', 'seguro', 'seg auto', 'desgravamen', 'comision', 'comisión', 'plan plus', 'mantencion', 'iva ', 'impuesto', 'impto', 'interes', 'cotizaciones', 'sii', 'toku'] },
+            'Viajes': { color: '#14b8a6', subcategorias: ['Pasajes','Alojamiento','Otros'], palabras: ['air france', 'latam', 'sky airline', 'jetsmart', 'hotel', 'doubletree', 'booking', 'airbnb'] },
+            'Ingresos': { color: '#22c55e', subcategorias: ['Transferencia recibida','Sueldo','Reversa/Abono','Otros'], palabras: [] },
+            'Otros': { color: '#64748b', subcategorias: ['Sin clasificar'], palabras: [] }
+        };
+
+        let gastos = [];
+        let selectedFile = null;
+        let previewTransacciones = [];
+        let editandoId = null;
+
+        // ═══════════ UTILIDADES ═══════════
+
+        function parseMontoChileno(str) {
+            // "94.178" → 94178 (punto = miles) | "22,43" → 22.43 (coma = decimal)
+            // Preserva el signo (negativo = reversa/abono en tarjeta)
+            str = String(str).replace(/[$\s]/g, '');
+            const negativo = str.includes('-');
+            str = str.replace(/-/g, '');
+            let n;
+            if (/,\d{1,2}$/.test(str)) {
+                n = parseFloat(str.replace(/\./g, '').replace(',', '.'));
+            } else {
+                n = parseFloat(str.replace(/\./g, '').replace(/,/g, ''));
+            }
+            if (isNaN(n)) return null;
+            return negativo ? -n : n;
+        }
+
+        function categorizar(descripcion) {
+            const desc = descripcion.toLowerCase();
+            for (const [cat, datos] of Object.entries(categorias)) {
+                for (const palabra of datos.palabras) {
+                    if (desc.includes(palabra)) return { categoria: cat, subcategoria: '' };
+                }
+            }
+            return { categoria: 'Otros', subcategoria: '' };
+        }
+
+        function detectarBanco(texto) {
+            const t = texto.toLowerCase();
+            if (t.includes('worldmember')) return 'Tarjeta Santander Worldmember';
+            if (t.includes('banco santander') || t.includes('santander')) {
+                if (t.includes('estado de cuenta en moneda nacional de tarjeta')) return 'Tarjeta Santander Worldmember';
+                return 'Banco Santander';
+            }
+            if (t.includes('bancosecurity') || t.includes('banco security') || t.includes('security')) {
+                if (t.includes('estado de cuenta nacional')) return 'Tarjeta Security One';
+                return 'Banco Security';
+            }
+            if (t.includes('banco de chile') || t.includes('bancochile')) {
+                if (t.includes('internacional de tarjeta')) return 'MasterCard Internacional';
+                if (t.includes('nacional de tarjeta')) {
+                    if (t.includes('visa')) return 'Visa Banco de Chile';
+                    return 'MasterCard Nacional';
+                }
+                return 'Banco de Chile';
+            }
+            if (t.includes('mastercard')) return 'MasterCard Nacional';
+            if (t.includes('visa')) return 'Visa Banco de Chile';
+            return 'Otros';
+        }
+
+        function detectarAnio(texto) {
+            const matches = texto.match(/20[2-3]\d/g);
+            if (!matches) return null;
+            const freq = {};
+            matches.forEach(y => freq[y] = (freq[y] || 0) + 1);
+            return Object.entries(freq).sort((a,b) => b[1]-a[1])[0][0];
+        }
+
+        // ═══════════ EXTRACCIÓN PDF (por líneas, usando posición Y) ═══════════
+
+        async function extraerLineasPagina(page) {
+            const content = await page.getTextContent();
+            const lineas = [];
+            for (const item of content.items) {
+                if (!item.str.trim()) continue;
+                const y = item.transform[5];
+                const x = item.transform[4];
+                let linea = lineas.find(l => Math.abs(l.y - y) <= 3);
+                if (!linea) { linea = { y, items: [] }; lineas.push(linea); }
+                linea.items.push({ x, str: item.str });
+            }
+            return lineas
+                .sort((a, b) => b.y - a.y)
+                .map(l => l.items.sort((a, b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim());
+        }
+
+        const PALABRAS_EXCLUIR = [
+            'monto cancelado', 'pago tarjeta',
+            'saldo ', 'pago dolar', 'monto pagado', 'monto facturado', 'periodo', 'período',
+            'cupo ', 'facturacion', 'facturación',
+            'sin movimiento', 'vencimiento', 'pagar hasta', 'cancelar hasta', 'comprobante', 'retencion',
+            'saldo anterior', 'nuevo saldo', 'saldo inicial', 'saldo final',
+            'estado de cuenta', 'informacion', 'información', 'detalle de', 'resumen',
+            'ptos.', 'ptos ', 'monto deuda', 'excedan', 'hasta uf', 'interes moratorio', 'interés moratorio',
+            'monto minimo a pagar', 'monto mínimo a pagar', 'pago minimo', 'pago mínimo',
+            'costo monetario prepago', 'cargo automatico', 'cargo automático',
+            'n° de cuenta', 'nº de cuenta', 'informese sobre', 'infórmese sobre',
+            'entidades autorizadas', 'registros de emisores', 'cmfchile', 'timbre banco'
+        ];
+        // Estas SÍ existen como pagos reales en cuentas corrientes (PAGO EN SERVIPAG, PAGO EN SII, etc.)
+        // por eso NO van en la lista global. Solo se excluyen dentro del patrón de TARJETA (ver más abajo),
+        // donde "PAGO AUTOMATICO"/"MONTO CANCELADO" representa el pago del total, no una compra.
+        const PALABRAS_EXCLUIR_SOLO_TARJETA = ['pago automatico', 'monto cancelado'];
+
+        function esLineaExcluida(linea) {
+            const l = linea.toLowerCase();
+            if (/https?:\/\//i.test(linea)) return true; // URLs de pie de página
+            return PALABRAS_EXCLUIR.some(p => l.includes(p));
+        }
+
+        const CIUDADES = /\s+(SANTIAGO|LAS CONDES|Las Condes|ST\.?\s?DOMINGO|SANTO DOMING[O]?|COQUIMBO|CHILLAN|VALPARAISO|ESMERALDA|TEMUCO|PANGUIPULLI|MELIPILLA|VITACURA|SAN ANTONIO|LO BARNECHEA|PROVIDENCIA|HUECHURABA|TALAGANTE|CHACABUCO|VALDIVIA|CUPERTNO|CUPERTINO|NEWARK|SAN FRANCIS|Stockholm)\s*$/i;
+
+        function limpiarDescripcion(desc) {
+            let out = desc
+                .replace(/TASA\s+INT\.?\s*[\d,.]+\s*%?/gi, '')
+                .replace(/TRES CUOTAS PREC/gi, '(3 cuotas)')
+                .replace(/CUOTA COMERCIO/gi, '(cuotas)')
+                .replace(/CUOTA FIJA/gi, '(cuotas)')
+                .replace(/COMPRAS P\.A\.T\.?/gi, '')
+                .replace(/[\d,.]+\s*%/g, '')
+                .replace(/\s+(INTERNET|CENTRAL|COBRO|OPER\.?|Agustinas|G\.Finanzas|O\.Gerencia)\s*/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            // Solo recortamos el nombre de ciudad al final si queda un nombre de comercio
+            // razonable antes (>= 3 caracteres). Si no, es probable que la "ciudad" sea en
+            // realidad parte del nombre del comercio (ej. "RT HUECHURABA") y no debe perderse.
+            const mCiudad = out.match(CIUDADES);
+            if (mCiudad && out.slice(0, mCiudad.index).trim().length >= 3) {
+                out = out.slice(0, mCiudad.index).trim();
+            }
+            return out;
+        }
+
+        const PALABRAS_INGRESO_CTA = ['traspaso de:', 'transferencia desde', 'deposito', 'depósito', 'abono'];
+        const PALABRAS_CARGO_CTA = ['traspaso a:', 'transfer', 'pac ', 'pago', 'giro', 'comision', 'com.',
+                                     'interes', 'impto', 'impuesto', 'seguro', 'plan ', 'iva', 'cheque'];
+
+        function extraerTransacciones(lineas, anioDefault) {
+            const trans = [];
+
+            // PATRÓN A: Tarjetas de crédito — fecha DD/MM/YY(YY) + montos con $
+            const pTarjeta = /(\d{2}\/\d{2}\/\d{2,4})\s+(?:(\d{4,13})\s+)?(.+?)\s*\$\s?(-?[\d.,]+)/;
+
+            // PATRÓN B: Tarjeta internacional (sin $) — ref larga + fecha + desc + PAIS + monto origen + monto USD
+            const pInternacional = /^\d{4}\s+[A-Z0-9]{15,}\s+(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+[A-Z]{2}\s+[\d.,]+\s+([\d.,]+)\s*$/;
+
+            for (let i = 0; i < lineas.length; i++) {
+                const linea = lineas[i];
+                if (linea.length < 10 || esLineaExcluida(linea)) continue;
+
+                // ── Internacional (USD) ──
+                let m = linea.match(pInternacional);
+                if (m) {
+                    const [_, fechaStr, descRaw, montoUsd] = m;
+                    const descLower = descRaw.toLowerCase();
+                    if (PALABRAS_EXCLUIR_SOLO_TARJETA.some(p => descLower.includes(p))) continue;
+                    const [d, mo, yRaw] = fechaStr.split('/');
+                    const fecha = `20${yRaw}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                    const montoRaw = parseMontoChileno(montoUsd);
+                    const desc = limpiarDescripcion(descRaw);
+                    if (montoRaw !== null && montoRaw !== 0) {
+                        trans.push({
+                            fecha, desc: desc.substring(0, 80),
+                            monto: Math.abs(montoRaw),
+                            tipo: montoRaw < 0 ? 'ingreso' : 'gasto',
+                            moneda: 'USD'
+                        });
+                    }
+                    continue;
+                }
+
+                // ── Tarjetas nacionales ──
+                // Algunas glosas (ej. MercadoPago, "PUC WEB PREGRADO...") vienen partidas en
+                // varias líneas dentro de la misma celda del PDF. Reconstruimos en 2 fases:
+                //  A) si la línea de inicio no trae el monto todavía, vamos juntando líneas
+                //     siguientes hasta encontrar el "$" (glosa larga antes del monto).
+                //  B) después del match, juntamos 1-2 líneas más de "cola" que sigan sin fecha
+                //     ni "$" (glosa que continúa después del monto, ej. "Las Condes").
+                let lineaCompleta = linea;
+                let consumidasA = 0;
+                if (/\d{2}\/\d{2}\/\d{2,4}/.test(linea) && !linea.includes('$')) {
+                    let j = i + 1;
+                    while (j < lineas.length && consumidasA < 4) {
+                        const sig = lineas[j].trim();
+                        if (!sig || sig.length > 50) break;
+                        if (/\d{2}\/\d{2}\/\d{2,4}/.test(sig)) break;
+                        const sigLower = sig.toLowerCase();
+                        if (sigLower.includes('movimientos tarjeta') || esLineaExcluida(sig)) break;
+                        lineaCompleta += ' ' + sig;
+                        consumidasA++;
+                        j++;
+                        if (sig.includes('$')) break; // llegamos al monto
+                    }
+                }
+
+                m = lineaCompleta.match(pTarjeta);
+                if (m) {
+                    let idx = i + 1 + consumidasA;
+                    let colaDesc = '';
+                    let consumidasB = 0;
+                    while (idx < lineas.length && consumidasB < 2) {
+                        const sig = lineas[idx].trim();
+                        if (!sig || sig.length > 50) break;
+                        if (/\d{2}\/\d{2}\/\d{2,4}/.test(sig) || sig.includes('$')) break;
+                        const sigLower = sig.toLowerCase();
+                        if (sigLower.includes('movimientos tarjeta') || esLineaExcluida(sig)) break;
+                        colaDesc += ' ' + sig;
+                        idx++;
+                        consumidasB++;
+                    }
+                    i = idx - 1; // saltar todas las líneas ya fusionadas
+
+                    const [_, fechaStr, codigo, descRaw] = m;
+                    const descLower = (descRaw + colaDesc).toLowerCase();
+                    // Revisamos la descripción YA RECONSTRUIDA (con la línea de cola incluida)
+                    // contra la lista COMPLETA de exclusiones, no solo la lista corta específica
+                    // de tarjetas. Esto es necesario porque al reconstruir filas partidas en
+                    // varias líneas (glosas envueltas, o texto del comprobante de pago con una
+                    // fecha suelta como "22/06/2026") podemos terminar armando una "transacción"
+                    // que en realidad es ruido del pie de página (Monto Facturado, Cancelar
+                    // hasta, etc) — sin importar cómo quede mezclado el texto exacto mes a mes.
+                    if (esLineaExcluida(descLower) || PALABRAS_EXCLUIR_SOLO_TARJETA.some(p => descLower.includes(p))) continue;
+                    const [d, mo, yRaw] = fechaStr.split('/');
+                    const y = yRaw.length === 2 ? '20' + yRaw : yRaw;
+                    const fecha = `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                    const montos = [...lineaCompleta.matchAll(/\$\s?(-?[\d.,]+)/g)].map(x => x[1]);
+                    const tieneCuota = /\d{2}\/\d{2}\s+\$\s?-?[\d.,]+\s*$/.test(lineaCompleta) && montos.length >= 3;
+                    const montoStr = tieneCuota ? montos[montos.length - 1] : montos[0];
+                    const montoRaw = parseMontoChileno(montoStr);
+                    let desc = limpiarDescripcion(descRaw + colaDesc);
+                    // Las compras en cuotas repiten la MISMA fecha de compra original en cada
+                    // cartola mensual (fecha+desc+monto quedan idénticos mes a mes), así que sin
+                    // distinguir el N° de cuota, el mes 2 se confunde con "duplicado" del mes 1.
+                    // Agregamos el número de cuota a la descripción para diferenciarlas.
+                    if (tieneCuota) {
+                        const mCuota = lineaCompleta.match(/(\d{2})\/(\d{2})\s+\$\s?-?[\d.,]+\s*$/);
+                        if (mCuota && parseInt(mCuota[2], 10) > 1) {
+                            desc = `${desc} (cuota ${parseInt(mCuota[1], 10)}/${parseInt(mCuota[2], 10)})`;
+                        }
+                    }
+                    if (montoRaw !== null && montoRaw !== 0 && desc.length > 2) {
+                        trans.push({
+                            fecha, desc: desc.substring(0, 80),
+                            monto: Math.abs(montoRaw),
+                            tipo: montoRaw < 0 ? 'ingreso' : 'gasto',
+                            moneda: 'CLP'
+                        });
+                    }
+                    continue;
+                }
+
+                // ── Cuentas corrientes: DD/MM + desc + [números al final: (extras) monto (saldo)] ──
+                m = linea.match(/^(\d{2}\/\d{2})\s+(.+)$/);
+                if (m) {
+                    const fechaStr = m[1];
+                    const tokens = m[2].split(/\s+/);
+                    const nums = [];
+                    // Un monto real en este formato SIEMPRE lleva punto de miles si es >= 1000,
+                    // o son 1-3 dígitos sueltos si es < 1000. Un N° de documento/referencia
+                    // (ej. "06965065", "844559272") es una tira larga de dígitos SIN puntos,
+                    // así que no se debe confundir con un monto.
+                    const esNumeroMonto = (tok) => /^\d{1,3}$/.test(tok) || /^\d{1,3}(\.\d{3})+$/.test(tok);
+                    while (tokens.length && esNumeroMonto(tokens[tokens.length - 1])) {
+                        nums.unshift(tokens.pop());
+                    }
+                    if (!nums.length) continue;
+                    let montoStr, extras = [];
+                    if (nums.length === 1) {
+                        montoStr = nums[0];
+                    } else {
+                        montoStr = nums[nums.length - 2];
+                        extras = nums.slice(0, nums.length - 2);
+                    }
+                    const desc = limpiarDescripcion([...tokens, ...extras].join(' '));
+                    const descL = desc.toLowerCase();
+
+                    const esIngreso0 = PALABRAS_INGRESO_CTA.some(p => descL.includes(p));
+                    const esCargo0 = !esIngreso0 && PALABRAS_CARGO_CTA.some(p => descL.includes(p));
+
+                    // Santander usa "Transf." para AMBAS direcciones, distinguibles solo por matiz:
+                    // "Transf a NOMBRE" = transferencia HACIA alguien (gasto)
+                    // "Transf. NOMBRE" / "Transf NOMBRE" (sin "a") = transferencia recibida DE alguien (ingreso)
+                    // Verificado contra los totales oficiales de "OTROS ABONOS"/"OTROS CARGOS" de cartolas reales.
+                    let esIngreso = esIngreso0, esCargo = esCargo0;
+                    if (!esIngreso && !esCargo) {
+                        const mTransf = descL.match(/\btransf\.?\s+(a\s+)?/);
+                        if (mTransf) {
+                            if (mTransf[1]) esCargo = true;
+                            else esIngreso = true;
+                        }
+                    }
+                    if (!esIngreso && !esCargo) continue;
+
+                    const [d, mo] = fechaStr.split('/');
+                    const fecha = `${anioDefault}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+                    const monto = parseMontoChileno(montoStr);
+                    if (monto && Math.abs(monto) > 0 && desc.length > 2) {
+                        // Algunas transacciones (ej. "TRANSFER. PACTADA DE FONDOS") traen su N° de
+                        // referencia en una línea aparte justo debajo en el PDF. Si no la incluimos,
+                        // dos transferencias del mismo día y monto quedan con la MISMA descripción
+                        // y el control de duplicados las descarta por error. La agregamos aquí.
+                        let descFinal = desc;
+                        const siguiente = lineas[i + 1];
+                        if (siguiente && /^\d{9,}$/.test(siguiente.trim())) {
+                            descFinal = `${desc} Ref:${siguiente.trim().slice(-6)}`;
+                        }
+                        trans.push({
+                            fecha, desc: descFinal.substring(0, 80),
+                            monto: Math.abs(monto),
+                            tipo: esIngreso ? 'ingreso' : 'gasto',
+                            moneda: 'CLP'
+                        });
+                    }
+                }
+            }
+            return trans;
+        }
+
+        // ═══════════ FLUJO PDF ═══════════
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                selectedFile = file;
+                document.getElementById('fileLabel').textContent = `✅ ${file.name}`;
+            } else {
+                mostrarAlerta('Selecciona un archivo PDF válido', 'error');
+            }
+        }
+
+        async function procesarPDF() {
+            if (!selectedFile) return mostrarAlerta('Selecciona un PDF primero', 'error');
+
+            document.getElementById('processingInfo').style.display = 'block';
+            document.getElementById('btnProcessPDF').disabled = true;
+
+            try {
+                const buffer = await selectedFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(new Uint8Array(buffer)).promise;
+                let todasLineas = [];
+                let textoCompleto = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    document.getElementById('processingStatus').textContent = `Página ${i}/${pdf.numPages}...`;
+                    document.getElementById('progressFill').style.width = (i / pdf.numPages * 70) + '%';
+                    const page = await pdf.getPage(i);
+                    const lineas = await extraerLineasPagina(page);
+                    todasLineas.push(...lineas);
+                    textoCompleto += lineas.join('\n') + '\n';
+                }
+
+                document.getElementById('processingStatus').textContent = 'Analizando transacciones...';
+                document.getElementById('progressFill').style.width = '85%';
+
+                const bancoManual = document.getElementById('bankSelect').value;
+                const banco = bancoManual || detectarBanco(textoCompleto);
+
+                const anioDetectado = detectarAnio(textoCompleto);
+                const anio = anioDetectado || document.getElementById('yearSelect').value;
+
+                previewTransacciones = extraerTransacciones(todasLineas, anio);
+                document.getElementById('progressFill').style.width = '100%';
+
+                if (previewTransacciones.length === 0) {
+                    mostrarAlerta('No se detectaron transacciones. Prueba seleccionando el banco manualmente, o usa "Importar texto".', 'error');
+                    document.getElementById('btnProcessPDF').disabled = false;
+                    document.getElementById('processingInfo').style.display = 'none';
+                    return;
+                }
+
+                mostrarPreview(banco);
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta('Error procesando PDF: ' + error.message, 'error');
+                document.getElementById('btnProcessPDF').disabled = false;
+                document.getElementById('processingInfo').style.display = 'none';
+            }
+        }
+
+        function mostrarPreview(banco) {
+            document.getElementById('uploadStep1').style.display = 'none';
+            document.getElementById('uploadStep2').style.display = 'block';
+
+            const gastosCLP = previewTransacciones.filter(t => t.tipo === 'gasto' && t.moneda === 'CLP').reduce((s,t)=>s+t.monto,0);
+            const ingresosCLP = previewTransacciones.filter(t => t.tipo === 'ingreso' && t.moneda === 'CLP').reduce((s,t)=>s+t.monto,0);
+            const usd = previewTransacciones.filter(t => t.moneda === 'USD').reduce((s,t)=>s+t.monto,0);
+            document.getElementById('previewResumen').textContent =
+                `✅ ${previewTransacciones.length} movimientos · Gastos: $${gastosCLP.toLocaleString('es-CL',{maximumFractionDigits:0})} · Ingresos: $${ingresosCLP.toLocaleString('es-CL',{maximumFractionDigits:0})}` +
+                (usd ? ` · USD: US$${usd.toLocaleString('es-CL',{maximumFractionDigits:2})}` : '');
+
+            document.getElementById('previewBanco').value = banco;
+
+            const tbody = document.getElementById('previewBody');
+            tbody.innerHTML = '';
+            previewTransacciones.forEach((t, i) => {
+                const tr = document.createElement('tr');
+                const esIngreso = t.tipo === 'ingreso';
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="preview-check" data-idx="${i}" checked></td>
+                    <td>${t.fecha}</td>
+                    <td style="${esIngreso ? 'color:#34d399;' : ''}">${t.desc}</td>
+                    <td>${esIngreso ? '💰 Ingreso' : '💸 Gasto'}</td>
+                    <td style="text-align:right; ${esIngreso ? 'color:#34d399;' : ''}">${t.moneda === 'USD' ? 'US$' : '$'}${t.monto.toLocaleString('es-CL', {maximumFractionDigits: t.moneda === 'USD' ? 2 : 0})}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleAllPreview() {
+            const checked = document.getElementById('checkAll').checked;
+            document.querySelectorAll('.preview-check').forEach(c => c.checked = checked);
+        }
+
+        function confirmarPreview() {
+            const banco = document.getElementById('previewBanco').value;
+            const checks = document.querySelectorAll('.preview-check:checked');
+            let agregadas = 0, duplicadas = 0;
+            const detalleDuplicados = [];
+
+            // Importante: comparamos contra una FOTO de lo que ya estaba guardado ANTES de
+            // este import (no contra el arreglo `gastos` mientras se va llenando). Un mismo
+            // PDF real puede traer legítimamente dos cargos con igual fecha+descripción+monto
+            // (ej. dos copagos de $10.110 en la misma clínica el mismo día) — eso NO es un
+            // duplicado y ambos deben agregarse. Lo que sí queremos evitar es volver a sumar
+            // datos si el usuario sube el MISMO PDF una segunda vez.
+            const gastosPrevios = gastos.slice();
+
+            checks.forEach(c => {
+                const t = previewTransacciones[parseInt(c.dataset.idx)];
+                const existe = gastosPrevios.some(g => g.fecha === t.fecha && g.desc === t.desc && g.monto === t.monto && g.banco === banco && g.tipo === t.tipo);
+                if (existe) {
+                    duplicadas++;
+                    detalleDuplicados.push(`${t.fecha} · ${t.desc} · $${t.monto.toLocaleString('es-CL')}`);
+                    return;
+                }
+                const { categoria, subcategoria } = t.tipo === 'ingreso'
+                    ? { categoria: 'Ingresos', subcategoria: '' }
+                    : categorizar(t.desc);
+                gastos.push({
+                    id: Date.now() + Math.random(),
+                    fecha: t.fecha, desc: t.desc, monto: t.monto, banco,
+                    categoria, subcategoria, tipo: t.tipo, moneda: t.moneda
+                });
+                agregadas++;
+            });
+
+            guardarEnLocal();
+            cerrarModalPDF();
+            let msg = `✅ ${agregadas} movimientos agregados (${banco})`;
+            if (duplicadas > 0) {
+                msg += ` · ${duplicadas} duplicado(s) omitido(s) (ya estaban guardados de antes): ${detalleDuplicados.join(' | ')}`;
+                console.log('Duplicados omitidos (ya existían en tus datos guardados):', detalleDuplicados);
+            }
+            mostrarAlerta(msg, duplicadas > 0 ? 'error' : 'success');
+            actualizarFiltros();
+            actualizarDatos();
+        }
+
+        function cancelarPreview() {
+            document.getElementById('uploadStep1').style.display = 'block';
+            document.getElementById('uploadStep2').style.display = 'none';
+            document.getElementById('btnProcessPDF').disabled = false;
+            document.getElementById('processingInfo').style.display = 'none';
+        }
+
+        function cerrarModalPDF() {
+            closeModal('modalUploadPDF');
+            cancelarPreview();
+            selectedFile = null;
+            document.getElementById('filePDF').value = '';
+            document.getElementById('fileLabel').textContent = '📁 Haz clic para seleccionar un PDF';
+        }
+
+        function openUploadPDF() {
+            document.getElementById('modalUploadPDF').classList.add('active');
+            cancelarPreview();
+            selectedFile = null;
+            document.getElementById('filePDF').value = '';
+            document.getElementById('fileLabel').textContent = '📁 Haz clic para seleccionar un PDF';
+            poblarSelectBancos('bankSelect', true);
+            poblarSelectBancos('previewBanco', false);
+            const ySel = document.getElementById('yearSelect');
+            if (!ySel.options.length) {
+                const actual = new Date().getFullYear();
+                for (let y = actual; y >= actual - 3; y--) {
+                    const o = document.createElement('option');
+                    o.value = y; o.textContent = y;
+                    ySel.appendChild(o);
+                }
+            }
+        }
+
+        // ═══════════ BANCOS (de fábrica + personalizados) ═══════════
+
+        const BANCOS_DEFAULT = ['Banco de Chile','Banco Santander','Banco Security','MasterCard Nacional',
+            'MasterCard Internacional','Visa Banco de Chile','Tarjeta Santander Worldmember','Tarjeta Security One'];
+
+        function getBancosCustom() {
+            try { return JSON.parse(localStorage.getItem('bancos_custom') || '[]'); } catch (e) { return []; }
+        }
+        function setBancosCustom(arr) {
+            localStorage.setItem('bancos_custom', JSON.stringify(arr));
+        }
+        function getBancosTodos() {
+            return [...BANCOS_DEFAULT, ...getBancosCustom(), 'Otros'];
+        }
+
+        function poblarSelectBancos(selectId, incluirAutoDetectar) {
+            const sel = document.getElementById(selectId);
+            const valorPrevio = sel.value;
+            sel.innerHTML = '';
+            if (incluirAutoDetectar) {
+                const o = document.createElement('option');
+                o.value = ''; o.textContent = '🔍 Auto-detectar';
+                sel.appendChild(o);
+            }
+            getBancosTodos().forEach(b => {
+                const o = document.createElement('option');
+                o.value = b; o.textContent = b;
+                sel.appendChild(o);
+            });
+            if (valorPrevio) sel.value = valorPrevio;
+        }
+
+        function refrescarTodosLosSelectsBanco() {
+            poblarSelectBancos('inputBanco', false);
+            poblarSelectBancos('bankSelect', true);
+            poblarSelectBancos('previewBanco', false);
+        }
+
+        function openGestionBancos() {
+            renderListaBancos();
+            document.getElementById('inputNuevoBanco').value = '';
+            document.getElementById('modalBancos').classList.add('active');
+        }
+
+        function renderListaBancos() {
+            document.getElementById('listaBancosDefault').innerHTML = BANCOS_DEFAULT.map(b => `• ${b}`).join('<br>') + '<br>• Otros';
+
+            const custom = getBancosCustom();
+            const cont = document.getElementById('listaBancosCustom');
+            if (custom.length === 0) {
+                cont.innerHTML = '<p style="font-size:12px; color:#94a3b8;">Aún no agregas ningún banco propio.</p>';
+                return;
+            }
+            cont.innerHTML = '';
+            custom.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'bank-item';
+                div.innerHTML = `<span>${b}</span><button class="btn btn-danger btn-icon" onclick="eliminarBancoCustom('${b.replace(/'/g,"\\'")}')">✕</button>`;
+                cont.appendChild(div);
+            });
+        }
+
+        function agregarBancoCustom() {
+            const input = document.getElementById('inputNuevoBanco');
+            const nombre = input.value.trim();
+            if (!nombre) return mostrarAlerta('Escribe un nombre de banco', 'error');
+            const todos = getBancosTodos().map(b => b.toLowerCase());
+            if (todos.includes(nombre.toLowerCase())) return mostrarAlerta('Ese banco ya existe', 'error');
+            const custom = getBancosCustom();
+            custom.push(nombre);
+            setBancosCustom(custom);
+            input.value = '';
+            renderListaBancos();
+            refrescarTodosLosSelectsBanco();
+            actualizarFiltros();
+            mostrarAlerta(`✅ Banco "${nombre}" agregado`, 'success');
+        }
+
+        function eliminarBancoCustom(nombre) {
+            if (!confirm(`¿Quitar "${nombre}" de la lista? (los movimientos ya guardados con este banco no se borran)`)) return;
+            let custom = getBancosCustom();
+            custom = custom.filter(b => b !== nombre);
+            setBancosCustom(custom);
+            renderListaBancos();
+            refrescarTodosLosSelectsBanco();
+            actualizarFiltros();
+        }
+
+        // ═══════════ EXPORTAR / IMPORTAR RESPALDO (backup completo) ═══════════
+
+        function exportarRespaldo() {
+            const respaldo = {
+                app: 'dashboard-gastos',
+                version: 1,
+                exportadoEl: new Date().toISOString(),
+                gastos: gastos,
+                bancosCustom: getBancosCustom()
+            };
+            const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const fecha = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `respaldo-gastos-${fecha}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            mostrarAlerta(`✅ Respaldo descargado (${gastos.length} movimientos)`, 'success');
+        }
+
+        function importarRespaldo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let data;
+                try {
+                    data = JSON.parse(e.target.result);
+                } catch (err) {
+                    mostrarAlerta('❌ El archivo no es un respaldo JSON válido', 'error');
+                    return;
+                }
+                if (!Array.isArray(data.gastos)) {
+                    mostrarAlerta('❌ El archivo no tiene el formato esperado', 'error');
+                    return;
+                }
+
+                const reemplazar = confirm(
+                    `El respaldo tiene ${data.gastos.length} movimientos.\n\n` +
+                    `Aceptar = REEMPLAZAR todos tus datos actuales por los del respaldo.\n` +
+                    `Cancelar = COMBINAR con tus datos actuales (sin duplicar).`
+                );
+
+                if (reemplazar) {
+                    gastos = data.gastos;
+                } else {
+                    let agregados = 0;
+                    data.gastos.forEach(g => {
+                        const existe = gastos.some(x => x.fecha === g.fecha && x.desc === g.desc && x.monto === g.monto && x.banco === g.banco && x.tipo === g.tipo);
+                        if (!existe) { gastos.push(g); agregados++; }
+                    });
+                }
+
+                // Migración por si el respaldo es de una versión anterior
+                gastos.forEach(g => {
+                    if (!g.tipo) g.tipo = 'gasto';
+                    if (!g.moneda) g.moneda = 'CLP';
+                    if (g.subcategoria === undefined) g.subcategoria = '';
+                    if (!g.id) g.id = Date.now() + Math.random();
+                });
+
+                if (Array.isArray(data.bancosCustom)) {
+                    const combinados = [...new Set([...getBancosCustom(), ...data.bancosCustom])];
+                    setBancosCustom(combinados);
+                    refrescarTodosLosSelectsBanco();
+                }
+
+                guardarEnLocal();
+                actualizarFiltros();
+                actualizarDatos();
+                mostrarAlerta(reemplazar ? `✅ Datos reemplazados (${gastos.length} movimientos)` : `✅ Combinado correctamente`, 'success');
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // ═══════════ CATEGORÍA / SUBCATEGORÍA (selects dependientes) ═══════════
+
+        function poblarSelectCategorias(selectId, incluirAutomatica) {
+            const sel = document.getElementById(selectId);
+            sel.innerHTML = incluirAutomatica ? '<option value="">🔍 Automática (según descripción)</option>' : '';
+            Object.keys(categorias).forEach(cat => {
+                const o = document.createElement('option');
+                o.value = cat; o.textContent = cat;
+                sel.appendChild(o);
+            });
+        }
+
+        function onCategoriaChange(catSelectId, subSelectId) {
+            const cat = document.getElementById(catSelectId).value;
+            const subSel = document.getElementById(subSelectId);
+            subSel.innerHTML = '';
+            if (!cat) {
+                subSel.disabled = true;
+                const o = document.createElement('option');
+                o.textContent = '(según categoría automática)';
+                subSel.appendChild(o);
+                return;
+            }
+            subSel.disabled = false;
+            categorias[cat].subcategorias.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s; o.textContent = s;
+                subSel.appendChild(o);
+            });
+        }
+
+        // ═══════════ NUEVO / EDITAR MOVIMIENTO ═══════════
+
+        function actualizarContadorIguales() {
+            const desc = document.getElementById('inputDescripcion').value.trim().toLowerCase();
+            const label = document.getElementById('labelAplicarTodos');
+            if (!desc) { label.style.display = 'none'; return; }
+            const cantidad = gastos.filter(g => g.desc.trim().toLowerCase() === desc && g.id !== editandoId).length;
+            document.getElementById('cantidadIguales').textContent = cantidad;
+            if (cantidad > 0) {
+                label.style.display = 'flex';
+            } else {
+                label.style.display = 'none';
+                document.getElementById('inputAplicarTodos').checked = false;
+            }
+        }
+
+        function openNewGasto() {
+            editandoId = null;
+            document.getElementById('tituloModalGasto').textContent = 'Nuevo movimiento';
+            document.getElementById('btnGuardarGasto').textContent = 'Guardar';
+            document.getElementById('inputFecha').valueAsDate = new Date();
+            document.getElementById('inputDescripcion').value = '';
+            document.getElementById('inputMonto').value = '';
+            document.getElementById('inputTipo').value = 'gasto';
+            document.getElementById('inputMoneda').value = 'CLP';
+            poblarSelectBancos('inputBanco', false);
+            document.getElementById('inputBanco').selectedIndex = 0;
+            poblarSelectCategorias('inputCategoria', true);
+            document.getElementById('inputCategoria').value = '';
+            onCategoriaChange('inputCategoria', 'inputSubcategoria');
+            document.getElementById('inputAplicarTodos').checked = false;
+            document.getElementById('labelAplicarTodos').style.display = 'none';
+            document.getElementById('modalNuevoGasto').classList.add('active');
+        }
+
+        function openEditGasto(id) {
+            const g = gastos.find(x => x.id === id);
+            if (!g) return;
+            editandoId = id;
+            document.getElementById('tituloModalGasto').textContent = 'Editar movimiento';
+            document.getElementById('btnGuardarGasto').textContent = 'Guardar cambios';
+            document.getElementById('inputFecha').value = g.fecha;
+            document.getElementById('inputDescripcion').value = g.desc;
+            document.getElementById('inputMonto').value = g.monto;
+            document.getElementById('inputTipo').value = g.tipo || 'gasto';
+            document.getElementById('inputMoneda').value = g.moneda || 'CLP';
+            poblarSelectBancos('inputBanco', false);
+            document.getElementById('inputBanco').value = g.banco;
+            poblarSelectCategorias('inputCategoria', true);
+            document.getElementById('inputCategoria').value = g.categoria || '';
+            onCategoriaChange('inputCategoria', 'inputSubcategoria');
+            if (g.subcategoria) document.getElementById('inputSubcategoria').value = g.subcategoria;
+            document.getElementById('inputAplicarTodos').checked = false;
+            actualizarContadorIguales();
+            document.getElementById('modalNuevoGasto').classList.add('active');
+        }
+
+        function guardarGasto(e) {
+            e.preventDefault();
+            const fecha = document.getElementById('inputFecha').value;
+            const desc = document.getElementById('inputDescripcion').value;
+            const monto = parseFloat(document.getElementById('inputMonto').value);
+            const banco = document.getElementById('inputBanco').value;
+            const tipo = document.getElementById('inputTipo').value;
+            const moneda = document.getElementById('inputMoneda').value;
+            if (!desc || !monto) return mostrarAlerta('Completa los campos', 'error');
+
+            let categoria = document.getElementById('inputCategoria').value;
+            let subcategoria = document.getElementById('inputSubcategoria').value;
+            if (!categoria) {
+                const auto = categorizar(desc);
+                categoria = auto.categoria;
+                subcategoria = '';
+            }
+
+            const aplicarATodos = document.getElementById('inputAplicarTodos').checked;
+
+            if (editandoId !== null) {
+                const g = gastos.find(x => x.id === editandoId);
+                Object.assign(g, { fecha, desc, monto: Math.abs(monto), banco, categoria, subcategoria, tipo, moneda });
+                mostrarAlerta('✅ Movimiento actualizado', 'success');
+            } else {
+                gastos.push({ id: Date.now(), fecha, desc, monto: Math.abs(monto), banco, categoria, subcategoria, tipo, moneda });
+                mostrarAlerta('✅ Movimiento agregado', 'success');
+            }
+
+            if (aplicarATodos) {
+                const descNorm = desc.trim().toLowerCase();
+                let actualizados = 0;
+                gastos.forEach(g => {
+                    if (g.desc.trim().toLowerCase() === descNorm && g.id !== editandoId) {
+                        g.categoria = categoria;
+                        g.subcategoria = subcategoria;
+                        actualizados++;
+                    }
+                });
+                if (actualizados > 0) {
+                    mostrarAlerta(`✅ Categoría "${categoria}" aplicada también a ${actualizados} movimiento(s) con la misma descripción`, 'success');
+                }
+            }
+
+            guardarEnLocal();
+            closeModal('modalNuevoGasto');
+            editandoId = null;
+            actualizarFiltros();
+            actualizarDatos();
+        }
+
+        // ═══════════ RESTO DE LA APP ═══════════
+
+        function cargarDatos() {
+            const saved = localStorage.getItem('gastos_dashboard');
+            if (saved) try { gastos = JSON.parse(saved); } catch (e) { console.error(e); }
+            // Migración de datos antiguos (sin tipo/moneda/subcategoria)
+            gastos.forEach(g => {
+                if (!g.tipo) g.tipo = 'gasto';
+                if (!g.moneda) g.moneda = 'CLP';
+                if (g.subcategoria === undefined) g.subcategoria = '';
+                if (!categorias[g.categoria]) g.categoria = 'Otros';
+            });
+            refrescarTodosLosSelectsBanco();
+            actualizarFiltros();
+            actualizarDatos();
+        }
+
+        function guardarEnLocal() {
+            localStorage.setItem('gastos_dashboard', JSON.stringify(gastos));
+        }
+
+        function openImport() {
+            document.getElementById('modalImport').classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            if (id === 'modalNuevoGasto') editandoId = null;
+        }
+
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) e.target.classList.remove('active');
+        }
+
+        function importarDatos() {
+            const text = document.getElementById('textImport').value;
+            const lineas = text.trim().split('\n');
+            let count = 0;
+            lineas.forEach((linea, idx) => {
+                if (!linea.trim()) return;
+                const partes = linea.split('|').map(p => p.trim());
+                if (partes.length >= 4) {
+                    const [fecha, desc, montoStr, banco] = partes;
+                    const monto = parseFloat(montoStr.replace(/[$,]/g, ''));
+                    if (!isNaN(monto) && monto > 0) {
+                        const { categoria, subcategoria } = categorizar(desc);
+                        gastos.push({ id: Date.now() + idx, fecha, desc, monto, banco, categoria, subcategoria, tipo: 'gasto', moneda: 'CLP' });
+                        count++;
+                    }
+                }
+            });
+            if (count > 0) {
+                mostrarAlerta(`✅ Importados ${count} gastos`, 'success');
+                guardarEnLocal();
+                closeModal('modalImport');
+                actualizarFiltros();
+                actualizarDatos();
+                document.getElementById('textImport').value = '';
+            } else {
+                mostrarAlerta('❌ No se encontraron gastos válidos', 'error');
+            }
+        }
+
+        function mostrarAlerta(msg, tipo = 'success') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${tipo}`;
+            alert.textContent = msg;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), msg.length > 80 ? 9000 : 5000);
+        }
+
+        function actualizarFiltros() {
+            const meses = [...new Set(gastos.map(g => g.fecha.slice(0, 7)))].sort().reverse();
+            const selectMes = document.getElementById('filterMes');
+            const selectBanco = document.getElementById('filterBanco');
+            const selectCategoria = document.getElementById('filterCategoria');
+            const bancos = [...new Set(gastos.map(g => g.banco))];
+            const mesActual = selectMes.value, bancoActual = selectBanco.value, catActual = selectCategoria.value;
+
+            selectMes.innerHTML = '<option value="">Todos los meses</option>';
+            meses.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                selectMes.appendChild(opt);
+            });
+            selectMes.value = mesActual;
+
+            selectBanco.innerHTML = '<option value="todos">Todos los bancos</option>';
+            bancos.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b; opt.textContent = b;
+                selectBanco.appendChild(opt);
+            });
+            selectBanco.value = bancoActual || 'todos';
+
+            selectCategoria.innerHTML = '<option value="todos">Todas las categorías</option>';
+            Object.keys(categorias).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                selectCategoria.appendChild(opt);
+            });
+            selectCategoria.value = catActual || 'todos';
+        }
+
+        function actualizarDatos() {
+            const mes = document.getElementById('filterMes').value;
+            const banco = document.getElementById('filterBanco').value;
+            const tipoFiltro = document.getElementById('filterTipo').value;
+            const catFiltro = document.getElementById('filterCategoria').value;
+            const textoFiltro = document.getElementById('filterTexto').value.trim().toLowerCase();
+
+            const gastosFiltrados = gastos.filter(g => {
+                const mesParte = g.fecha.slice(0, 7);
+                return (!mes || mesParte === mes)
+                    && (banco === 'todos' || g.banco === banco)
+                    && (tipoFiltro === 'todos' || g.tipo === tipoFiltro)
+                    && (catFiltro === 'todos' || g.categoria === catFiltro)
+                    && (!textoFiltro || g.desc.toLowerCase().includes(textoFiltro));
+            });
+
+            const totalGastosCLP = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'CLP').reduce((s,g)=>s+g.monto,0);
+            const totalIngresosCLP = gastosFiltrados.filter(g => g.tipo === 'ingreso' && g.moneda === 'CLP').reduce((s,g)=>s+g.monto,0);
+            const totalGastosUSD = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'USD').reduce((s,g)=>s+g.monto,0);
+
+            document.getElementById('totalGastosCLP').textContent = '$' + totalGastosCLP.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+            document.getElementById('totalIngresosCLP').textContent = '$' + totalIngresosCLP.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+            document.getElementById('totalGastosUSD').textContent = 'US$' + totalGastosUSD.toLocaleString('es-CL', { maximumFractionDigits: 2 });
+            document.getElementById('totalTransacciones').textContent = gastosFiltrados.length;
+
+            // Gráficos: solo gastos en CLP
+            const gastosClpSolo = gastosFiltrados.filter(g => g.tipo === 'gasto' && g.moneda === 'CLP');
+            const porCat = {}, porBanco = {};
+            for (const cat of Object.keys(categorias)) {
+                porCat[cat] = gastosClpSolo.filter(g => g.categoria === cat).reduce((s, g) => s + g.monto, 0);
+            }
+            gastosClpSolo.forEach(g => { porBanco[g.banco] = (porBanco[g.banco] || 0) + g.monto; });
+
+            const chartLeft = document.getElementById('chartLeft');
+            chartLeft.innerHTML = '<h3>Por categoría</h3>';
+            Object.entries(porCat)
+                .filter(([_, m]) => m > 0)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([cat, monto]) => {
+                    const pct = totalGastosCLP ? (monto / totalGastosCLP) * 100 : 0;
+                    const div = document.createElement('div');
+                    div.className = 'category-bar';
+                    const color = categorias[cat].color;
+                    div.innerHTML = `
+                        <div class="category-bar-label">
+                            <span><span class="color-sample" style="background: ${color}"></span>${cat}</span>
+                            <strong>$${monto.toLocaleString('es-CL', { maximumFractionDigits: 0 })}</strong>
+                        </div>
+                        <div class="bar"><div class="bar-fill" style="background: ${color}; width: ${pct}%"></div></div>`;
+                    chartLeft.appendChild(div);
+                });
+            if (Object.values(porCat).every(v => v === 0)) {
+                chartLeft.innerHTML += '<p class="empty-message" style="padding:8px;">Sin gastos en CLP con estos filtros</p>';
+            }
+
+            const chartRight = document.getElementById('chartRight');
+            chartRight.innerHTML = '<h3>Por banco (gastos CLP)</h3>';
+            Object.entries(porBanco).forEach(([b, monto]) => {
+                const div = document.createElement('div');
+                div.className = 'bank-item';
+                div.innerHTML = `<span>${b}</span><strong>$${monto.toLocaleString('es-CL', { maximumFractionDigits: 0 })}</strong>`;
+                chartRight.appendChild(div);
+            });
+
+            const tbody = document.getElementById('tablaGastosBody');
+            tbody.innerHTML = '';
+            if (gastosFiltrados.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Sin movimientos registrados</td></tr>';
+            } else {
+                gastosFiltrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(g => {
+                    const color = categorias[g.categoria] ? categorias[g.categoria].color : '#64748b';
+                    const esIngreso = g.tipo === 'ingreso';
+                    const simboloMoneda = g.moneda === 'USD' ? 'US$' : '$';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${g.fecha}</td>
+                        <td><strong>${g.desc}</strong></td>
+                        <td>
+                            <span class="badge" style="background: ${color}20; color: ${color}">${g.categoria}</span>
+                            ${g.subcategoria ? `<span class="subcat">${g.subcategoria}</span>` : ''}
+                        </td>
+                        <td>${g.banco}</td>
+                        <td><span class="badge" style="background: ${esIngreso ? '#22c55e20' : '#64748b20'}; color: ${esIngreso ? '#34d399' : '#94a3b8'}">${esIngreso ? '💰 Ingreso' : '💸 Gasto'}</span>${g.moneda === 'USD' ? '<span class="subcat">USD</span>' : ''}</td>
+                        <td style="text-align: right;" class="${esIngreso ? 'monto-ingreso' : 'monto-gasto'}">${simboloMoneda}${g.monto.toLocaleString('es-CL', { maximumFractionDigits: g.moneda === 'USD' ? 2 : 0 })}</td>
+                        <td class="actions-cell">
+                            <button class="btn btn-warning btn-icon" onclick="openEditGasto(${g.id})" title="Editar">✏️</button>
+                            <button class="btn btn-danger btn-icon" onclick="eliminarGasto(${g.id})" title="Eliminar">✕</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function eliminarGasto(id) {
+            if (confirm('¿Eliminar este movimiento?')) {
+                gastos = gastos.filter(g => g.id !== id);
+                guardarEnLocal();
+                actualizarDatos();
+            }
+        }
+
+        cargarDatos();
+    </script>
+</body>
+</html>
